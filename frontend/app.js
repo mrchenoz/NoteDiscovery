@@ -28,10 +28,38 @@ const CONFIG = {
     TOAST_DURATION_WARNING_MS: 5500,
     TOAST_DURATION_INFO_MS: 4500,
     TOAST_DURATION_SUCCESS_MS: 3500,
+    /**
+     * Excalidraw editor (vector sketches stored as *.excalidraw JSON files).
+     * The ESM bundle is loaded lazily on first use; its bare "react"/"react-dom"
+     * imports resolve through the import map declared in index.html, so the
+     * React version pinned there must stay compatible with this Excalidraw version.
+     */
+    EXCALIDRAW_ESM_URL: 'https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/prod/index.js?external=react,react-dom',
+    EXCALIDRAW_CSS_URL: 'https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/index.css',
+    EXCALIDRAW_ASSET_PATH: 'https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/',
 };
 
 /** Heroicons outline "share" (same d= as shared-note icon in the file tree) */
 const SHARE_ICON_PATH = 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z';
+
+/**
+ * Excalidraw runtime handles. Deliberately kept OUTSIDE the Alpine component:
+ * Alpine deep-wraps component state in reactive proxies, and React's root/API
+ * objects misbehave when their internals are read back through a proxy.
+ */
+const EXCAL = {
+    libPromise: null,   // Promise resolving to this holder once lib/React are loaded
+    lib: null,          // @excalidraw/excalidraw module (Excalidraw, serializeAsJSON, …)
+    React: null,
+    ReactDOMClient: null,
+    root: null,         // React root currently mounted in the viewer pane
+    api: null,          // ExcalidrawImperativeAPI for the mounted scene
+    mountedFor: null,   // vault-relative path of the scene the editor is showing
+    autosaveTimeout: null,
+    saveInFlight: false,
+    saveQueued: false,
+    lastSavedJSON: null,
+};
 
 // localStorage settings configuration - centralized definition of all persisted settings
 const LOCAL_SETTINGS = {
@@ -48,7 +76,7 @@ const LOCAL_SETTINGS = {
     sortMode: { key: 'sortMode', type: 'string', default: 'a-z' },
     newButtonAction: {
         key: 'newButtonAction', type: 'string', default: 'chooser',
-        valid: ['chooser', 'note', 'folder', 'template', 'drawing']
+        valid: ['chooser', 'note', 'folder', 'template', 'drawing', 'excalidraw']
     },
     lastUsedTemplate: { key: 'lastUsedTemplate', type: 'string', default: '' },
     // Number settings with validation
@@ -808,11 +836,14 @@ function noteApp() {
                 window.addEventListener('keydown', (e) => {
                     // Use e.key (not e.code) for letter keys to support non-QWERTY keyboard layouts
                     
-                    // Ctrl/Cmd + S to save (drawing saves PNG; notes save markdown)
+                    // Ctrl/Cmd + S to save (drawing saves PNG; Excalidraw saves scene JSON; notes save markdown)
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                         if (this.currentMedia && this.currentMediaType === 'drawing') {
                             e.preventDefault();
                             this.drawingSave();
+                        } else if (this.currentMedia && this.currentMediaType === 'excalidraw') {
+                            e.preventDefault();
+                            this.excalidrawSave();
                         } else {
                             e.preventDefault();
                             this.saveNote();
@@ -838,9 +869,12 @@ function noteApp() {
                         this.createFolder();
                     }
                     
-                    // Ctrl/Cmd + Z for undo (drawing vs note editor)
+                    // Ctrl/Cmd + Z for undo (drawing vs note editor).
+                    // Excalidraw scenes are skipped: the component handles its own undo/redo.
                     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
-                        if (this.currentMedia && this.currentMediaType === 'drawing') {
+                        if (this.currentMedia && this.currentMediaType === 'excalidraw') {
+                            // let Excalidraw handle it
+                        } else if (this.currentMedia && this.currentMediaType === 'drawing') {
                             e.preventDefault();
                             this.drawingUndo();
                         } else {
@@ -848,10 +882,12 @@ function noteApp() {
                             this.undo();
                         }
                     }
-                    
+
                     // Ctrl/Cmd + Y OR Ctrl/Cmd+Shift+Z for redo
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-                        if (this.currentMedia && this.currentMediaType === 'drawing') {
+                        if (this.currentMedia && this.currentMediaType === 'excalidraw') {
+                            // let Excalidraw handle it
+                        } else if (this.currentMedia && this.currentMediaType === 'drawing') {
                             e.preventDefault();
                             this.drawingRedo();
                         } else {
@@ -860,7 +896,9 @@ function noteApp() {
                         }
                     }
                     if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
-                        if (this.currentMedia && this.currentMediaType === 'drawing') {
+                        if (this.currentMedia && this.currentMediaType === 'excalidraw') {
+                            // let Excalidraw handle it
+                        } else if (this.currentMedia && this.currentMediaType === 'drawing') {
                             e.preventDefault();
                             this.drawingRedo();
                         } else {
@@ -2616,7 +2654,9 @@ function noteApp() {
                 ? this.t('toolbar.delete_note')
                 : note.type === 'drawing'
                     ? this.t('toolbar.delete_drawing')
-                    : this.t('toolbar.delete_image');
+                    : note.type === 'excalidraw'
+                        ? this.t('toolbar.delete_excalidraw')
+                        : this.t('toolbar.delete_image');
             
             return `
                 <div 
@@ -3047,6 +3087,9 @@ function noteApp() {
             if (base.startsWith('drawing-') && base.endsWith('.png')) {
                 return 'drawing';
             }
+            if (base.endsWith('.excalidraw')) {
+                return 'excalidraw';
+            }
             const ext = filename.split('.').pop().toLowerCase();
             const mediaTypes = {
                 image: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
@@ -3065,6 +3108,7 @@ function noteApp() {
             const icons = {
                 image: '🖼️',
                 drawing: '✏️',
+                excalidraw: '🎨',
                 audio: '🎵',
                 video: '🎬',
                 document: '📄',
@@ -3090,6 +3134,8 @@ function noteApp() {
                 this._drawingDisconnectResizeObserver();
                 this._drawingCancelAutosave();
             }
+            // Flush + unmount any open Excalidraw scene (no-op when none is mounted)
+            this._excalidrawTeardown({ flush: true });
             this.showGraph = false; // Ensure graph is closed
             this.currentNote = '';
             this.currentNoteName = '';
@@ -3124,6 +3170,15 @@ function noteApp() {
                     this.initDrawingViewer();
                 });
             }
+
+            // Excalidraw: same first-mount vs scene→scene split as drawings above —
+            // initExcalidrawViewer() is idempotent per path, so the x-init call and
+            // this one cannot double-mount.
+            if (this.currentMediaType === 'excalidraw') {
+                this.$nextTick(() => {
+                    this.initExcalidrawViewer();
+                });
+            }
         },
         
         // Backward compatibility alias
@@ -3141,6 +3196,8 @@ function noteApp() {
             
             this._optimisticRemoveNote(mediaPath);
             this._rebuildTreeAfterMutation();
+            // Discard (don't flush) a mounted Excalidraw scene for the file being deleted
+            if (EXCAL.mountedFor === mediaPath) this._excalidrawTeardown({ flush: false });
             if (this.currentMedia === mediaPath) this.currentMedia = '';
             
             try {
@@ -3203,6 +3260,236 @@ function noteApp() {
             }
         },
         
+        // =====================================================
+        // EXCALIDRAW EDITOR (vector sketches, *.excalidraw JSON)
+        // =====================================================
+
+        /**
+         * Create a brand-new Excalidraw scene file and open it in the editor.
+         * Mirrors createNewDrawing(): the server stores the upload as
+         * drawing-{timestamp}.excalidraw next to the .md notes in the target folder.
+         */
+        async createNewExcalidraw() {
+            const targetFolder = this.inferredNewItemTargetFolder();
+            this.closeDropdown();
+            const scene = JSON.stringify({
+                type: 'excalidraw',
+                version: 2,
+                source: window.location.origin,
+                elements: [],
+                appState: { viewBackgroundColor: '#ffffff' },
+                files: {},
+            });
+            const file = new File([scene], 'drawing.excalidraw', { type: 'application/json' });
+            try {
+                // uploadMedia() already does the optimistic note-list add + tree rebuild
+                const path = await this.uploadMedia(file, '', {
+                    nextToNotes: true,
+                    contentFolder: targetFolder,
+                });
+                this.viewMedia(path, 'excalidraw');
+            } catch (error) {
+                ErrorHandler.handle('create excalidraw', error);
+                await this.loadNotes({ silent: true });
+            }
+        },
+
+        _excalidrawEncodePath(path) {
+            return path.split('/').map((s) => encodeURIComponent(s)).join('/');
+        },
+
+        /**
+         * Lazily load React + the Excalidraw ESM bundle (once per session) and
+         * inject the editor stylesheet. Resolves to the shared EXCAL holder.
+         */
+        _excalidrawEnsureLib() {
+            if (EXCAL.libPromise) return EXCAL.libPromise;
+            if (!document.getElementById('excalidraw-css')) {
+                const link = document.createElement('link');
+                link.id = 'excalidraw-css';
+                link.rel = 'stylesheet';
+                link.href = CONFIG.EXCALIDRAW_CSS_URL;
+                document.head.appendChild(link);
+            }
+            // Excalidraw fetches fonts and other static assets relative to this base URL
+            window.EXCALIDRAW_ASSET_PATH = CONFIG.EXCALIDRAW_ASSET_PATH;
+            EXCAL.libPromise = Promise.all([
+                import(CONFIG.EXCALIDRAW_ESM_URL),
+                import('react'),
+                import('react-dom/client'),
+            ]).then(([lib, React, ReactDOMClient]) => {
+                EXCAL.lib = lib;
+                EXCAL.React = React;
+                EXCAL.ReactDOMClient = ReactDOMClient;
+                return EXCAL;
+            }).catch((err) => {
+                EXCAL.libPromise = null; // allow a retry after a network failure
+                throw err;
+            });
+            return EXCAL.libPromise;
+        },
+
+        /**
+         * Mount the Excalidraw editor for this.currentMedia into the viewer pane.
+         * Called from the pane's x-init (first mount) and from viewMedia() (scene→scene
+         * switches, where the pane stays in the DOM). Idempotent per scene path; the
+         * post-await EXCAL.root check makes concurrent calls mount only once.
+         */
+        async initExcalidrawViewer() {
+            const path = this.currentMedia;
+            if (!path || this.currentMediaType !== 'excalidraw') return;
+            if (EXCAL.mountedFor === path && EXCAL.root) return;
+            this._excalidrawTeardown({ flush: true });
+
+            let scene = null;
+            try {
+                const resp = await fetch(`/api/media/${this._excalidrawEncodePath(path)}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const text = await resp.text();
+                scene = text.trim() ? JSON.parse(text) : null;
+            } catch (error) {
+                ErrorHandler.handle('load excalidraw scene', error);
+                return;
+            }
+
+            try {
+                await this._excalidrawEnsureLib();
+            } catch (error) {
+                ErrorHandler.handle('load excalidraw editor', error);
+                return;
+            }
+
+            // The user may have navigated elsewhere (or a concurrent call may have
+            // mounted already) while the fetch/import above were in flight.
+            if (this.currentMedia !== path || this.currentMediaType !== 'excalidraw') return;
+            if (EXCAL.root) return;
+            const host = this.$refs.excalidrawHost;
+            if (!host) return;
+
+            const appState = { ...(scene && scene.appState ? scene.appState : {}) };
+            // serializeAsJSON strips collaborators, but scenes from other tools may
+            // carry it as a plain object; Excalidraw expects a Map, so drop it.
+            delete appState.collaborators;
+
+            EXCAL.root = EXCAL.ReactDOMClient.createRoot(host);
+            EXCAL.mountedFor = path;
+            EXCAL.lastSavedJSON = null;
+            EXCAL.root.render(EXCAL.React.createElement(EXCAL.lib.Excalidraw, {
+                initialData: {
+                    elements: (scene && Array.isArray(scene.elements)) ? scene.elements : [],
+                    appState,
+                    files: (scene && scene.files) ? scene.files : {},
+                },
+                excalidrawAPI: (api) => { EXCAL.api = api; },
+                onChange: () => this._excalidrawScheduleAutosave(),
+                theme: this.getThemeType() === 'dark' ? 'dark' : 'light',
+            }));
+        },
+
+        /** Debounced autosave; same delay source as note/drawing autosave. */
+        _excalidrawScheduleAutosave() {
+            if (!EXCAL.api || !EXCAL.mountedFor) return;
+            clearTimeout(EXCAL.autosaveTimeout);
+            EXCAL.autosaveTimeout = setTimeout(() => {
+                this.excalidrawSave();
+            }, this.autosaveDelayMs ?? CONFIG.AUTOSAVE_DELAY);
+        },
+
+        _excalidrawCancelAutosave() {
+            if (EXCAL.autosaveTimeout) {
+                clearTimeout(EXCAL.autosaveTimeout);
+                EXCAL.autosaveTimeout = null;
+            }
+        },
+
+        /** PUT a serialized scene to /api/media/{path}; throws on HTTP failure. */
+        async _excalidrawPutScene(path, json) {
+            const resp = await fetch(`/api/media/${this._excalidrawEncodePath(path)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: json,
+            });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        },
+
+        /**
+         * Serialize the mounted scene and write it to disk. Skips the request when
+         * nothing changed since the last successful save; coalesces overlapping
+         * calls (Ctrl+S + autosave) like drawingSave() does.
+         */
+        async excalidrawSave() {
+            if (!EXCAL.api || !EXCAL.mountedFor || !EXCAL.lib) return;
+            if (EXCAL.saveInFlight) {
+                EXCAL.saveQueued = true;
+                return;
+            }
+            const path = EXCAL.mountedFor;
+            let json;
+            try {
+                json = EXCAL.lib.serializeAsJSON(
+                    EXCAL.api.getSceneElements(),
+                    EXCAL.api.getAppState(),
+                    EXCAL.api.getFiles(),
+                    'local'
+                );
+            } catch (error) {
+                ErrorHandler.handle('save excalidraw scene', error);
+                return;
+            }
+            if (json === EXCAL.lastSavedJSON) return;
+            EXCAL.saveInFlight = true;
+            try {
+                await this._excalidrawPutScene(path, json);
+                if (EXCAL.mountedFor === path) EXCAL.lastSavedJSON = json;
+            } catch (error) {
+                ErrorHandler.handle('save excalidraw scene', error);
+            } finally {
+                EXCAL.saveInFlight = false;
+                if (EXCAL.saveQueued) {
+                    EXCAL.saveQueued = false;
+                    if (EXCAL.mountedFor) this.excalidrawSave();
+                }
+            }
+        },
+
+        /**
+         * Unmount the editor and drop the runtime handles. flush=true serializes any
+         * pending changes synchronously first and writes them in the background (used
+         * on navigation); flush=false discards them (used when the file was deleted).
+         * Handles are detached before the async PUT so a concurrent init can mount a
+         * new scene without racing this teardown. Safe no-op when nothing is mounted.
+         */
+        _excalidrawTeardown({ flush = true } = {}) {
+            this._excalidrawCancelAutosave();
+            const root = EXCAL.root;
+            const path = EXCAL.mountedFor;
+            let pendingJSON = null;
+            if (flush && EXCAL.api && EXCAL.lib && path) {
+                try {
+                    pendingJSON = EXCAL.lib.serializeAsJSON(
+                        EXCAL.api.getSceneElements(),
+                        EXCAL.api.getAppState(),
+                        EXCAL.api.getFiles(),
+                        'local'
+                    );
+                } catch (_) { /* nothing to flush */ }
+                if (pendingJSON === EXCAL.lastSavedJSON) pendingJSON = null;
+            }
+            EXCAL.root = null;
+            EXCAL.api = null;
+            EXCAL.mountedFor = null;
+            EXCAL.lastSavedJSON = null;
+            EXCAL.saveQueued = false;
+            if (root) {
+                try { root.unmount(); } catch (_) { /* ignore */ }
+            }
+            if (pendingJSON && path) {
+                this._excalidrawPutScene(path, pendingJSON).catch((error) => {
+                    ErrorHandler.handle('save excalidraw scene', error);
+                });
+            }
+        },
+
         _drawingEncodeMediaPath() {
             return this.currentMedia.split('/').map((s) => encodeURIComponent(s)).join('/');
         },
@@ -4370,6 +4657,7 @@ function noteApp() {
                         if (this.currentMediaType === 'drawing') {
                             this._drawingDisconnectResizeObserver();
                         }
+                        this._excalidrawTeardown({ flush: true });
                         this.currentMedia = '';
                         document.title = this.appName;
                         return;
@@ -4393,6 +4681,7 @@ function noteApp() {
                 if (this.currentMediaType === 'drawing') {
                     this._drawingDisconnectResizeObserver();
                 }
+                this._excalidrawTeardown({ flush: true });
                 this.currentMedia = ''; // Clear image viewer when loading a note
                 this.shareInfo = null; // Reset share info for new note
                 
@@ -4749,6 +5038,7 @@ function noteApp() {
                 case 'folder':   this.createFolder();       break;
                 case 'template': this.openTemplateModal();  break;
                 case 'drawing':  this.createNewDrawing();   break;
+                case 'excalidraw': this.createNewExcalidraw(); break;
                 default:         this._openNewDropdownChooser(event);
             }
         },
@@ -7506,8 +7796,9 @@ function noteApp() {
         goToHomepageFolder(folderPath) {
             this.showGraph = false; // Close graph when navigating
             this.selectedHomepageFolder = folderPath || '';
-            
+
             // Clear editor state to show landing page
+            this._excalidrawTeardown({ flush: true });
             this.currentNote = '';
             this.currentNoteName = '';
             this.noteContent = '';
@@ -7531,6 +7822,7 @@ function noteApp() {
         goHome() {
             this.showGraph = false; // Close graph when going home
             this.selectedHomepageFolder = '';
+            this._excalidrawTeardown({ flush: true });
             this.currentNote = '';
             this.currentNoteName = '';
             this.noteContent = '';

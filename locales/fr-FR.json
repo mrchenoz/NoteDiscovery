@@ -39,6 +39,7 @@
     "new_folder": "Nouveau Dossier",
     "new_from_template": "Nouveau depuis Modèle",
     "new_drawing": "Nouveau dessin",
+    "new_excalidraw": "Nouveau Excalidraw",
     "rename_folder": "Renommer le dossier",
     "delete_folder": "Supprimer le dossier",
     "search_placeholder": "Rechercher des notes...",
@@ -121,6 +122,7 @@
     "delete_note": "Supprimer la note",
     "delete_image": "Supprimer l'image",
     "delete_drawing": "Supprimer le dessin",
+    "delete_excalidraw": "Supprimer l'Excalidraw",
     "export_html": "Exporter en HTML",
     "print_preview": "Aperçu avant impression",
     "copy_link": "Copier le lien dans le presse-papiers",
@@ -278,6 +280,7 @@
     "new_button_option_folder": "Nouveau dossier",
     "new_button_option_template": "Nouvelle note depuis un modèle",
     "new_button_option_drawing": "Nouveau dessin",
+    "new_button_option_excalidraw": "Nouveau Excalidraw",
     "auto_fill_note_title": "Titre avec horodatage",
     "auto_fill_note_title_desc": "aaaammjjHHMMSS. Entrée accepte, tapez pour remplacer."
   },

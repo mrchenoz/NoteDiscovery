@@ -648,8 +648,10 @@ async def get_media(media_path: str):
         # Validate it's an allowed media file
         if full_path.suffix.lower() not in ALL_MEDIA_EXTENSIONS:
             raise HTTPException(status_code=400, detail="Not an allowed media file")
-        
-        # Return the file
+
+        # Return the file (.excalidraw is JSON; mimetypes doesn't know the extension)
+        if full_path.suffix.lower() == '.excalidraw':
+            return FileResponse(full_path, media_type='application/json')
         return FileResponse(full_path)
     except HTTPException:
         raise
@@ -661,8 +663,9 @@ async def get_media(media_path: str):
 @limiter.limit("120/minute")
 async def put_media(media_path: str, request: Request):
     """
-    Overwrite an existing media file in place (used for saving drawing PNGs).
-    Only files named drawing-*.png are accepted to avoid accidental overwrites.
+    Overwrite an existing media file in place (used for saving drawings).
+    Only files named drawing-*.png or Excalidraw scenes (*.excalidraw) are
+    accepted to avoid accidental overwrites of other media.
     """
     try:
         from backend.utils import ALL_MEDIA_EXTENSIONS
@@ -674,10 +677,12 @@ async def put_media(media_path: str, request: Request):
             raise HTTPException(status_code=403, detail="Access denied")
 
         name_lower = full_path.name.lower()
-        if not (name_lower.startswith('drawing-') and name_lower.endswith('.png')):
+        is_drawing_png = name_lower.startswith('drawing-') and name_lower.endswith('.png')
+        is_excalidraw = name_lower.endswith('.excalidraw')
+        if not (is_drawing_png or is_excalidraw):
             raise HTTPException(
                 status_code=400,
-                detail="Only drawing PNG files (drawing-*.png) can be updated in place",
+                detail="Only drawing files (drawing-*.png or *.excalidraw) can be updated in place",
             )
 
         if full_path.suffix.lower() not in ALL_MEDIA_EXTENSIONS:
@@ -694,8 +699,15 @@ async def put_media(media_path: str, request: Request):
                 detail=f"File too large. Maximum size: {UPLOAD_MAX_IMAGE_MB}MB",
             )
 
-        # Reject non-PNG payloads (defense in depth; path already restricts to .png)
-        if len(body) < 8 or body[:8] != b"\x89PNG\r\n\x1a\n":
+        # Validate payload matches the file type (defense in depth)
+        if is_excalidraw:
+            try:
+                parsed = json.loads(body.decode('utf-8'))
+                if not isinstance(parsed, dict):
+                    raise ValueError("not a JSON object")
+            except (ValueError, UnicodeDecodeError):
+                raise HTTPException(status_code=400, detail="Body must be a valid Excalidraw JSON object")
+        elif len(body) < 8 or body[:8] != b"\x89PNG\r\n\x1a\n":
             raise HTTPException(status_code=400, detail="Body must be a valid PNG image")
 
         try:
@@ -772,10 +784,11 @@ async def upload_media(
         
         if (next_to_notes or "").strip() == "1":
             is_png = file.content_type in ("image/png",) or (file.filename and file.filename.lower().endswith(".png"))
-            if not is_png:
+            is_excalidraw = bool(file.filename and file.filename.lower().endswith(".excalidraw"))
+            if not (is_png or is_excalidraw):
                 raise HTTPException(
                     status_code=400,
-                    detail="next_to_notes requires a PNG file",
+                    detail="next_to_notes requires a PNG or .excalidraw file",
                 )
             file_path = save_uploaded_image(
                 config["storage"]["notes_dir"],

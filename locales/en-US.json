@@ -39,6 +39,7 @@
     "new_folder": "New Folder",
     "new_from_template": "New from Template",
     "new_drawing": "New Drawing",
+    "new_excalidraw": "New Excalidraw",
     "rename_folder": "Rename folder",
     "delete_folder": "Delete folder",
     "search_placeholder": "Search notes...",
@@ -121,6 +122,7 @@
     "delete_note": "Delete note",
     "delete_image": "Delete image",
     "delete_drawing": "Delete drawing",
+    "delete_excalidraw": "Delete Excalidraw",
     "export_html": "Export as HTML",
     "print_preview": "Print preview",
     "copy_link": "Copy link to clipboard",
@@ -278,6 +280,7 @@
     "new_button_option_folder": "New folder",
     "new_button_option_template": "New note from template",
     "new_button_option_drawing": "New drawing",
+    "new_button_option_excalidraw": "New Excalidraw",
     "auto_fill_note_title": "Auto-fill title with timestamp",
     "auto_fill_note_title_desc": "yyyymmddHHMMSS. Enter to accept, type to replace."
   },

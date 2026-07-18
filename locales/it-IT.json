@@ -39,6 +39,7 @@
     "new_folder": "Nuova Cartella",
     "new_from_template": "Nuovo da Modello",
     "new_drawing": "Nuovo disegno",
+    "new_excalidraw": "Nuovo Excalidraw",
     "rename_folder": "Rinomina cartella",
     "delete_folder": "Elimina cartella",
     "search_placeholder": "Cerca note...",
@@ -120,6 +121,7 @@
     "delete_note": "Elimina nota",
     "delete_image": "Elimina immagine",
     "delete_drawing": "Elimina disegno",
+    "delete_excalidraw": "Elimina Excalidraw",
     "export_html": "Esporta come HTML",
     "print_preview": "Anteprima di stampa",
     "copy_link": "Copia link negli appunti",
@@ -277,6 +279,7 @@
     "new_button_option_folder": "Nuova cartella",
     "new_button_option_template": "Nuova nota da modello",
     "new_button_option_drawing": "Nuovo disegno",
+    "new_button_option_excalidraw": "Nuovo Excalidraw",
     "auto_fill_note_title": "Compila titolo con timestamp",
     "auto_fill_note_title_desc": "aaaammddHHMMSS. Invio accetta, digita per sostituire."
   },

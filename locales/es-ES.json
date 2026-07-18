@@ -39,6 +39,7 @@
     "new_folder": "Nueva Carpeta",
     "new_from_template": "Nueva desde Plantilla",
     "new_drawing": "Nuevo dibujo",
+    "new_excalidraw": "Nuevo Excalidraw",
     "rename_folder": "Renombrar carpeta",
     "delete_folder": "Eliminar carpeta",
     "search_placeholder": "Buscar notas...",
@@ -121,6 +122,7 @@
     "delete_note": "Eliminar nota",
     "delete_image": "Eliminar imagen",
     "delete_drawing": "Eliminar dibujo",
+    "delete_excalidraw": "Eliminar Excalidraw",
     "export_html": "Exportar como HTML",
     "print_preview": "Vista previa de impresión",
     "copy_link": "Copiar enlace al portapapeles",
@@ -278,6 +280,7 @@
     "new_button_option_folder": "Nueva carpeta",
     "new_button_option_template": "Nueva nota desde plantilla",
     "new_button_option_drawing": "Nuevo dibujo",
+    "new_button_option_excalidraw": "Nuevo Excalidraw",
     "auto_fill_note_title": "Título con marca de tiempo",
     "auto_fill_note_title_desc": "aaaammddHHMMSS. Intro acepta, escribe para reemplazar."
   },
