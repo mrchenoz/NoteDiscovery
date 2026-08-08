@@ -234,8 +234,7 @@
   "media": {
     "confirm_delete": "\"{{name}}\" löschen?",
     "upload_failed": "Datei-Upload fehlgeschlagen",
-    "no_valid_files": "Keine gültigen Dateien gefunden. Unterstützt: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "Keine gültigen Dateien gefunden. Unterstützt: {{formats}}"
   },
   "move": {
     "failed_note": "Verschieben der Notiz fehlgeschlagen.",
@@ -282,7 +281,9 @@
     "new_button_option_drawing": "Neue Zeichnung",
     "new_button_option_excalidraw": "Neues Excalidraw",
     "auto_fill_note_title": "Titel mit Zeitstempel",
-    "auto_fill_note_title_desc": "jjjjmmttHHMMSS. Enter akzeptiert, Tippen ersetzt."
+    "auto_fill_note_title_desc": "jjjjmmttHHMMSS. Enter akzeptiert, Tippen ersetzt.",
+    "smart_scroll_sync": "Intelligente Scroll-Sync",
+    "smart_scroll_sync_desc": "Richtet Überschriften, Bilder und Tabellen zwischen den Bereichen aus. Aus: prozentuales Scrollen."
   },
   "homepage": {
     "title": "Startseite",

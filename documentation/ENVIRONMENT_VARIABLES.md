@@ -9,8 +9,28 @@ NoteDiscovery supports environment variables to override configuration settings,
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `PORT` | integer | `8000` | HTTP port for the application (Docker, run.py) |
+| `APP_NAME` | string | `NoteDiscovery` | Name shown in the UI, the login page, the browser title and the API docs. Overrides `app.name` in `config.yaml`. |
+| `FORWARDED_ALLOW_IPS` | string | `127.0.0.1` | Reverse proxy deployments only. Set to `*` so `X-Forwarded-Proto` and `X-Forwarded-For` are trusted and the app sees the real scheme and client IP. Read by uvicorn, not by NoteDiscovery. |
 
 > **Note**: Advanced server settings (CORS origins, debug mode) are configured via `config.yaml` only, not via environment variables. See [config.yaml](#advanced-server-configuration) for details.
+
+#### Example: Naming your instance
+
+```bash
+# Docker
+docker run -e APP_NAME="My Notes" ...
+
+# Docker Compose
+environment:
+  - APP_NAME=My Notes
+```
+
+Equivalent in `config.yaml`:
+
+```yaml
+app:
+  name: "My Notes"
+```
 
 ### Storage
 
@@ -79,6 +99,7 @@ AUTHENTICATION_PASSWORD=mysecretpassword
 | `UPLOAD_MAX_AUDIO_MB` | integer | `50` | Maximum audio upload size in MB |
 | `UPLOAD_MAX_VIDEO_MB` | integer | `100` | Maximum video upload size in MB |
 | `UPLOAD_MAX_PDF_MB` | integer | `20` | Maximum PDF upload size in MB |
+| `UPLOAD_MAX_NOTE_MB` | integer | `10` | Maximum size of `.md` files imported via drag & drop |
 
 #### Example: Allowing larger video uploads
 
@@ -96,6 +117,9 @@ environment:
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `AUTOSAVE_DELAY_MS` | integer | `1000` | Autosave debounce in milliseconds (applies to note typing and drawing autosave). Server-clamped to 250–60000ms. |
+| `DEFAULT_THEME` | string | `light` | Theme served to new browsers that have not saved a preference yet. Use a theme ID from `themes/` (the CSS filename without `.css`). Invalid values are logged and fall back to `light`. |
+
+> **Priority:** A user's previously-selected theme is stored in `localStorage` and always takes precedence over `DEFAULT_THEME`. This setting only affects fresh sessions.
 
 #### Example: Slower autosave for very large notes
 
@@ -108,11 +132,23 @@ environment:
   - AUTOSAVE_DELAY_MS=5000
 ```
 
+#### Example: Default new browsers to the Dracula theme
+
+```bash
+# Docker
+docker run -e DEFAULT_THEME=dracula ...
+
+# Docker Compose
+environment:
+  - DEFAULT_THEME=dracula
+```
+
 Equivalent in `config.yaml`:
 
 ```yaml
 ui:
   autosave_delay_ms: 5000
+  default_theme: "dracula"
 ```
 
 ## 🎯 Configuration Priority
@@ -178,4 +214,3 @@ When `debug: false` (recommended):
 ---
 
 **Pro Tip:** Use environment variables for **deployment-specific** settings, and `config.yaml` for **application defaults**. This keeps your configuration flexible and maintainable! 🎯
-

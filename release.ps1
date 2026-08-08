@@ -122,10 +122,64 @@ if (-not $SkipCommit) {
 Write-Host "Updating VERSION file..." -ForegroundColor Yellow
 $Version | Out-File -FilePath "VERSION" -Encoding utf8 -NoNewline
 
+# Keep the landing page structured data and sitemap in sync with the release.
+# Substitutions are verified before writing, so a future markup change can't
+# silently no-op and publish stale metadata. Writes are BOM-less and add no
+# trailing newline, keeping the diff to the substituted values only.
+$today = (Get-Date).ToString('yyyy-MM-dd')
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+$abortHint = "Nothing was committed or tagged. Run 'git checkout -- .' to discard local changes."
+
+$landingPage = "docs/index.html"
+if (Test-Path $landingPage) {
+    Write-Host "Updating structured data in $landingPage..." -ForegroundColor Yellow
+    $html = Get-Content $landingPage -Raw
+    $html = $html -replace '("softwareVersion":\s*")[^"]*"', "`${1}$Version`""
+    $html = $html -replace '("dateModified":\s*")[^"]*"', "`${1}$today`""
+
+    $seenVersion = [regex]::Match($html, '"softwareVersion":\s*"([^"]*)"')
+    if (-not $seenVersion.Success -or $seenVersion.Groups[1].Value -ne $Version) {
+        Write-Host "Error: could not set softwareVersion in $landingPage." -ForegroundColor Red
+        Write-Host $abortHint -ForegroundColor Yellow
+        exit 1
+    }
+
+    $seenModified = [regex]::Match($html, '"dateModified":\s*"([^"]*)"')
+    if (-not $seenModified.Success -or $seenModified.Groups[1].Value -ne $today) {
+        Write-Host "Error: could not set dateModified in $landingPage." -ForegroundColor Red
+        Write-Host $abortHint -ForegroundColor Yellow
+        exit 1
+    }
+
+    [System.IO.File]::WriteAllText((Resolve-Path $landingPage), $html, $utf8NoBom)
+    Write-Host "  softwareVersion -> $Version, dateModified -> $today" -ForegroundColor Green
+} else {
+    Write-Host "Warning: $landingPage not found, skipping structured data update." -ForegroundColor Yellow
+}
+
+$sitemap = "docs/sitemap.xml"
+if (Test-Path $sitemap) {
+    Write-Host "Updating lastmod in $sitemap..." -ForegroundColor Yellow
+    $xml = Get-Content $sitemap -Raw
+    $xml = $xml -replace '(<lastmod>)[^<]*(</lastmod>)', "`${1}$today`${2}"
+
+    $seenLastmod = [regex]::Match($xml, '<lastmod>([^<]*)</lastmod>')
+    if (-not $seenLastmod.Success -or $seenLastmod.Groups[1].Value -ne $today) {
+        Write-Host "Error: could not set lastmod in $sitemap." -ForegroundColor Red
+        Write-Host $abortHint -ForegroundColor Yellow
+        exit 1
+    }
+
+    [System.IO.File]::WriteAllText((Resolve-Path $sitemap), $xml, $utf8NoBom)
+    Write-Host "  lastmod -> $today" -ForegroundColor Green
+} else {
+    Write-Host "Warning: $sitemap not found, skipping lastmod update." -ForegroundColor Yellow
+}
+
 # Commit changes (unless skipped)
 if (-not $SkipCommit) {
     Write-Host "Committing version changes..." -ForegroundColor Yellow
-    git add VERSION
+    git add VERSION docs/index.html docs/sitemap.xml
     git commit -m "Updated version to $Version"
     
     # Push commits first

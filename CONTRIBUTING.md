@@ -43,6 +43,17 @@ This helps ensure that:
 - Changes to the plugin or theme system architecture
 - Breaking changes to the API
 
+### AI-Assisted Contributions
+
+AI tools are welcome here — parts of NoteDiscovery are written with them. What matters is that a human has understood and verified the change before it arrives:
+
+- **Describe what the code actually does** - The title and description should match the diff. A mismatch is the quickest way to stall a review.
+- **Run it** - Generated changes should be tested locally, not just read.
+- **Keep it focused** - One concern per pull request. Unrelated edits bundled in — logging tweaks, formatting, drive-by refactors — will be asked to come out.
+- **Be ready to explain it** - If a reviewer asks why a change is correct, "the model suggested it" isn't an answer.
+
+Small, well-scoped fixes are genuinely appreciated. Volume of generated patches isn't a goal in itself.
+
 ## 🚀 How to Contribute
 
 ### 1. Fork and Clone
@@ -221,6 +232,8 @@ Even if your idea is great, a PR might not be accepted if:
 5. **It adds unnecessary complexity** - We prefer simple, maintainable solutions over complex ones.
 
 6. **It breaks backward compatibility** - Without a very good reason, we try to maintain compatibility.
+
+7. **It's generated code that hasn't been verified** - Plausible-looking changes that were never run, or whose description doesn't match the diff, will be sent back rather than reviewed line by line.
 
 ### What to Do If Your PR Isn't Accepted
 

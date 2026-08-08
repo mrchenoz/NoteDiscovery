@@ -30,7 +30,15 @@ RUN html-minifier-terser \
     -o frontend/login.html \
     frontend/login.html
 
-# Stage 2: Install Python dependencies
+# Stage 2: Download browser libraries so the runtime needs no CDN
+FROM python:3.11-slim AS vendor
+
+WORKDIR /build
+
+COPY scripts/vendor_assets.py scripts/vendor_lock.json ./scripts/
+RUN python scripts/vendor_assets.py --dest /vendor
+
+# Stage 3: Install Python dependencies
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
@@ -45,7 +53,7 @@ RUN find /install -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || tru
     find /install -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
     find /install -type d -name "*.dist-info" -exec rm -rf {}/RECORD {} + 2>/dev/null || true
 
-# Stage 3: Final minimal image
+# Stage 4: Final minimal image
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -55,6 +63,9 @@ COPY --from=builder /install /usr/local
 
 # Copy minified frontend from minifier stage
 COPY --from=minifier /build/frontend ./frontend
+
+# Browser libraries, with their licence texts and notices
+COPY --from=vendor /vendor ./frontend/vendor
 
 # Copy application files
 COPY backend ./backend

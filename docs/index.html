@@ -40,9 +40,15 @@
     <meta name="twitter:image" content="https://www.notediscovery.com/og-image.png">
     <meta name="twitter:image:alt" content="NoteDiscovery — self-hosted Markdown knowledge base">
 
-    <!-- Favicon -->
+    <!-- Bing Webmaster Tools -->
+    <meta name="msvalidate.01" content="21885C11E3DF87A9D056AE300EE4B94F" />
+
+    <!-- Favicon (apple-touch-icon must be a raster image; iOS ignores SVG) -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="apple-touch-icon" href="logo.svg">
+    <link rel="apple-touch-icon" href="logo.png">
+
+    <!-- Preload the first carousel slide (LCP element) -->
+    <link rel="preload" as="image" href="carousel-1.webp" type="image/webp" fetchpriority="high">
 
     <!-- Theme Color -->
     <meta name="theme-color" content="#667eea">
@@ -172,6 +178,41 @@
             font-size: 1.5rem;
             opacity: 0.95;
             font-weight: 300;
+        }
+
+        .project-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1.25rem auto 0;
+            max-width: 36rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .project-badges a {
+            display: inline-flex;
+            flex-shrink: 0;
+            line-height: 0;
+            opacity: 0.9;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .project-badges a:hover {
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+
+        .project-badges img {
+            height: 20px;
+            width: auto;
+            display: block;
+            border-radius: 3px;
         }
 
         .hero {
@@ -326,6 +367,78 @@
             margin-bottom: 0.25rem;
         }
 
+        .faq {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 3rem;
+            margin: 2rem 0;
+            box-shadow: 0 10px 30px var(--shadow-light);
+            transition: background 0.3s ease;
+        }
+
+        .faq h2 {
+            text-align: center;
+            font-size: 2rem;
+            color: var(--text-header);
+            margin-bottom: 2rem;
+        }
+
+        .faq-item {
+            background: var(--card-secondary);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: background 0.3s ease;
+        }
+
+        .faq-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .faq-item summary {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--text-header);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            list-style: none;
+        }
+
+        .faq-item summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .faq-item summary::after {
+            content: "+";
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .faq-item[open] summary::after {
+            transform: rotate(45deg);
+        }
+
+        .faq-item summary:hover {
+            color: #667eea;
+        }
+
+        .faq-item summary:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+            border-radius: 12px;
+        }
+
+        .faq-answer {
+            padding: 0 1.5rem 1.25rem;
+            color: var(--text-secondary);
+        }
+
         /* Scroll Animations */
         @keyframes fadeInUp {
             from {
@@ -471,6 +584,7 @@
         .screenshot-dot:nth-child(2) { background: #ffbd2e; }
         .screenshot-dot:nth-child(3) { background: #27c93f; }
 
+        .screenshot-frame picture,
         .screenshot-frame img {
             width: 100%;
             height: auto;
@@ -581,6 +695,17 @@
 
             .tagline {
                 font-size: 1.2rem;
+            }
+
+            .project-badges {
+                gap: 0.4rem;
+                padding: 0.45rem 0.6rem;
+                border-radius: 1rem;
+                max-width: calc(100% - 1rem);
+            }
+
+            .project-badges img {
+                height: 18px;
             }
 
             .hero, .benefits {
@@ -703,6 +828,23 @@
             <img src="logo.svg" alt="NoteDiscovery Logo" class="logo">
             <h1>NoteDiscovery</h1>
             <p class="tagline">Your Self-Hosted Knowledge Base</p>
+            <nav class="project-badges" aria-label="Project status">
+                <a href="https://github.com/gamosoft/NoteDiscovery/stargazers" target="_blank" rel="noopener" aria-label="GitHub stars">
+                    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/gamosoft/notediscovery?style=flat" loading="lazy" decoding="async">
+                </a>
+                <a href="https://github.com/gamosoft/NoteDiscovery/pkgs/container/notediscovery" target="_blank" rel="noopener" aria-label="GHCR container pulls">
+                    <img alt="GHCR Pulls" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgamosoft%2FNoteDiscovery%2Fstats%2Fghcr.json&amp;style=flat" loading="lazy" decoding="async">
+                </a>
+                <a href="https://github.com/gamosoft/NoteDiscovery/releases" target="_blank" rel="noopener" aria-label="Latest release">
+                    <img alt="Latest Version" src="https://img.shields.io/github/v/tag/gamosoft/notediscovery?style=flat" loading="lazy" decoding="async">
+                </a>
+                <a href="https://github.com/gamosoft/NoteDiscovery/blob/main/LICENSE" target="_blank" rel="noopener" aria-label="License">
+                    <img alt="License" src="https://img.shields.io/github/license/gamosoft/notediscovery?style=flat" loading="lazy" decoding="async">
+                </a>
+                <a href="https://github.com/gamosoft/NoteDiscovery/actions/workflows/docker-publish.yml" target="_blank" rel="noopener" aria-label="Build status">
+                    <img alt="Build" src="https://img.shields.io/github/actions/workflow/status/gamosoft/notediscovery/docker-publish.yml?style=flat" loading="lazy" decoding="async">
+                </a>
+            </nav>
         </header>
 
         <div class="hero animate-on-scroll">
@@ -740,7 +882,10 @@
                                     </div>
                                     <span class="screenshot-title">Editor View • Main Interface</span>
                                 </div>
-                                <img src="carousel-1.jpg" alt="NoteDiscovery editor showing Markdown preview and sidebar" width="1600" height="1000" fetchpriority="high" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-1.webp" type="image/webp">
+                                    <img src="carousel-1.jpg" alt="NoteDiscovery editor showing Markdown preview and sidebar" width="1545" height="978" fetchpriority="high" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 2: Search -->
@@ -754,7 +899,10 @@
                                     </div>
                                     <span class="screenshot-title">Smart Search • Find Anything Instantly</span>
                                 </div>
-                                                <img src="carousel-2.jpg" alt="NoteDiscovery smart full-text search results" width="1600" height="1000" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-2.webp" type="image/webp">
+                                    <img src="carousel-2.jpg" alt="NoteDiscovery smart full-text search results" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 3: Tag Filter -->
@@ -768,7 +916,10 @@
                                     </div>
                                     <span class="screenshot-title">Tag Filtering • Organize by Topics</span>
                                 </div>
-                                                <img src="carousel-3.jpg" alt="NoteDiscovery tag filtering panel" width="1600" height="1000" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-3.webp" type="image/webp">
+                                    <img src="carousel-3.jpg" alt="NoteDiscovery tag filtering panel" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 4: Outline -->
@@ -782,7 +933,10 @@
                                     </div>
                                     <span class="screenshot-title">Outline Panel • Navigate Headings</span>
                                 </div>
-                                                <img src="carousel-4.jpg" alt="NoteDiscovery outline panel for heading navigation" width="1600" height="1000" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-4.webp" type="image/webp">
+                                    <img src="carousel-4.jpg" alt="NoteDiscovery outline panel for heading navigation" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 5: Card View -->
@@ -796,7 +950,10 @@
                                     </div>
                                     <span class="screenshot-title">Card View • Visual Organization</span>
                                 </div>
-                                                <img src="carousel-5.jpg" alt="NoteDiscovery card view homepage with recent notes" width="1600" height="1000" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-5.webp" type="image/webp">
+                                    <img src="carousel-5.jpg" alt="NoteDiscovery card view homepage with recent notes" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 6: Graph View -->
@@ -810,7 +967,10 @@
                                     </div>
                                     <span class="screenshot-title">Graph View • Visualize Connections</span>
                                 </div>
-                                                <img src="carousel-6.jpg" alt="NoteDiscovery graph view of linked notes" width="1600" height="1000" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-6.webp" type="image/webp">
+                                    <img src="carousel-6.jpg" alt="NoteDiscovery graph view of linked notes" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                         <!-- Slide 7: Mobile Support -->
@@ -824,7 +984,10 @@
                                     </div>
                                     <span class="screenshot-title">Mobile Ready • Notes On The Go</span>
                                 </div>
-                                                <img src="carousel-7.png" alt="NoteDiscovery responsive mobile interface" width="800" height="1400" loading="lazy" decoding="async">
+                                <picture>
+                                    <source srcset="carousel-7.webp" type="image/webp">
+                                    <img src="carousel-7.png" alt="NoteDiscovery responsive mobile interface" width="1545" height="978" loading="lazy" decoding="async">
+                                </picture>
                             </div>
                         </div>
                     </div>
@@ -1040,6 +1203,36 @@
             </div>
         </div>
 
+        <!-- Keep in sync with the FAQPage JSON-LD at the end of this file -->
+        <div class="faq animate-on-scroll">
+            <h2>Frequently Asked Questions</h2>
+
+            <details class="faq-item" open>
+                <summary>Is NoteDiscovery really free?</summary>
+                <p class="faq-answer">Yes. NoteDiscovery is free and open source under the MIT license. There are no paid tiers, no accounts, and no telemetry. You self-host it on your own server.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary>Does it work with AI tools like Claude or Cursor?</summary>
+                <p class="faq-answer">Yes. NoteDiscovery ships with a built-in MCP (Model Context Protocol) server, so AI assistants like Claude Desktop and Cursor can read and edit your notes directly, without any copy-pasting back and forth.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary>Do my notes ever leave my computer?</summary>
+                <p class="faq-answer">No. Everything stays on the server you choose. There is no cloud sync and no third-party storage. The AI integration runs locally over MCP, and your notes are never sent anywhere unless you explicitly publish a share link.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary>Can I move my notes in or out easily?</summary>
+                <p class="faq-answer">Yes. Notes are plain Markdown files in normal folders. You can drop an existing Obsidian vault straight in, or open the same files in any other Markdown editor. There is no proprietary database to escape from.</p>
+            </details>
+
+            <details class="faq-item">
+                <summary>Do I need to be a developer to install it?</summary>
+                <p class="faq-answer">Not really. The recommended setup is a single Docker command, and there is a one-click PikaPods option if you would rather not touch the command line at all.</p>
+            </details>
+        </div>
+
         <div class="hero animate-on-scroll">
             <div class="hero-content">
                 <h2>Ready to Get Started?</h2>
@@ -1253,9 +1446,10 @@
       "applicationSubCategory": "NoteTakingApplication",
       "operatingSystem": "Linux, Windows, macOS",
       "browserRequirements": "Requires a modern browser with JavaScript enabled",
-      "softwareVersion": "0.22.1",
+      "softwareVersion": "0.30.1",
       "datePublished": "2025-01-15",
-      "dateModified": "2026-04-24",
+      "dateModified": "2026-08-04",
+      "inLanguage": "en",
       "license": "https://opensource.org/licenses/MIT",
       "downloadUrl": "https://github.com/gamosoft/NoteDiscovery",
       "codeRepository": "https://github.com/gamosoft/NoteDiscovery",
@@ -1267,15 +1461,28 @@
         "priceCurrency": "USD",
         "availability": "https://schema.org/InStock"
       },
+      "interactionStatistic": {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/LikeAction",
+        "userInteractionCount": 2687
+      },
       "author": {
         "@type": "Person",
         "name": "Gamosoft",
-        "url": "https://github.com/gamosoft"
+        "url": "https://github.com/gamosoft",
+        "sameAs": [
+          "https://github.com/gamosoft",
+          "https://twitter.com/gamosoft"
+        ]
       },
       "publisher": {
         "@type": "Organization",
         "name": "Gamosoft",
         "url": "https://github.com/gamosoft",
+        "sameAs": [
+          "https://github.com/gamosoft",
+          "https://twitter.com/gamosoft"
+        ],
         "logo": {
           "@type": "ImageObject",
           "url": "https://www.notediscovery.com/logo.png",

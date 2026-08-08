@@ -233,8 +233,7 @@
   "media": {
     "confirm_delete": "Delete \"{{name}}\"?",
     "upload_failed": "Failed to upload file",
-    "no_valid_files": "No valid files found. Supported: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "No valid files found. Supported: {{formats}}"
   },
   "move": {
     "failed_note": "Failed to move note.",
@@ -281,7 +280,9 @@
     "new_button_option_drawing": "New drawing",
     "new_button_option_excalidraw": "New Excalidraw",
     "auto_fill_note_title": "Auto-fill title with timestamp",
-    "auto_fill_note_title_desc": "yyyymmddHHMMSS. Enter to accept, type to replace."
+    "auto_fill_note_title_desc": "yyyymmddHHMMSS. Enter to accept, type to replace.",
+    "smart_scroll_sync": "Smart scroll sync",
+    "smart_scroll_sync_desc": "Aligns headings, images and tables between panes. Off uses percentage scrolling."
   },
   "homepage": {
     "title": "Home",

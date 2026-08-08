@@ -7,14 +7,20 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Request, Form, Dep
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from starlette.middleware.sessions import SessionMiddleware
 import os
+import re
+import mimetypes
 import yaml
 import json
 import logging
 from pathlib import Path
 from typing import List, Optional
+from html import escape as html_escape
+from urllib.parse import quote_plus, parse_qs
+import hashlib
 import aiofiles
 from datetime import datetime
 import bcrypt
@@ -77,6 +83,15 @@ if not version_path.exists():
 with open(version_path, 'r', encoding='utf-8') as f:
     version = f.read().strip()
     config['app']['version'] = version
+
+# App name: APP_NAME env var > app.name in config.yaml. An empty value is
+# treated as unset (matches Docker convention and DEFAULT_THEME below), since a
+# blank name would leave the UI and the login page unlabeled.
+_app_name_source = "config.yaml"
+if os.environ.get('APP_NAME', '').strip():
+    config['app']['name'] = os.environ['APP_NAME'].strip()
+    _app_name_source = "APP_NAME env var"
+logger.info("App name: %s (from %s)", config['app']['name'], _app_name_source)
 
 # Environment variable overrides for authentication settings
 # Allows different configs for local vs production deployments
@@ -189,14 +204,22 @@ app = FastAPI(
 # CORS middleware configuration
 # Use config.yaml to control allowed origins (default: ["*"] for self-hosted simplicity)
 allowed_origins = config.get('server', {}).get('allowed_origins', ["*"])
+# Starlette swaps the wildcard for the requesting Origin once a cookie is present,
+# so "*" plus credentials would allow credentialed reads from any origin.
+_allow_credentials = "*" not in allowed_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 logger.info("CORS allowed origins: %s", allowed_origins)
+
+# The vendored libraries are served from here rather than a CDN, so nothing
+# compresses them for us. The threshold leaves small responses alone, where the
+# gzip header would cost more than it saves.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ===========================================================
 # =================
@@ -249,6 +272,7 @@ UPLOAD_MAX_IMAGE_MB = int(os.getenv('UPLOAD_MAX_IMAGE_MB', '10'))
 UPLOAD_MAX_AUDIO_MB = int(os.getenv('UPLOAD_MAX_AUDIO_MB', '50'))
 UPLOAD_MAX_VIDEO_MB = int(os.getenv('UPLOAD_MAX_VIDEO_MB', '100'))
 UPLOAD_MAX_PDF_MB = int(os.getenv('UPLOAD_MAX_PDF_MB', '20'))
+UPLOAD_MAX_NOTE_MB = int(os.getenv('UPLOAD_MAX_NOTE_MB', '10'))
 
 # Autosave debounce in milliseconds (applies to note typing AND drawing PNG autosave).
 try:
@@ -259,6 +283,33 @@ try:
 except (TypeError, ValueError):
     _autosave_raw = 1000
 AUTOSAVE_DELAY_MS = max(250, min(60000, _autosave_raw))
+
+# Themes directory (single source of truth reused by /api/themes, exports, share view,
+# and the default-theme validation below).
+THEMES_DIR = Path(__file__).parent.parent / "themes"
+
+# Default UI theme for browsers that do not have a saved preference yet.
+# Priority: DEFAULT_THEME env var > ui.default_theme in config.yaml > 'light'.
+# Invalid values are logged with their source and coerced back to 'light' so a
+# bad config can never lock users out of the UI. Empty-string env var is treated
+# as unset (matches Docker convention and how NOTES_DIR/PLUGINS_DIR behave above).
+_theme_source = "config.yaml"
+if os.environ.get('DEFAULT_THEME'):
+    _theme_raw = os.environ['DEFAULT_THEME']
+    _theme_source = "DEFAULT_THEME env var"
+else:
+    _theme_raw = config.get('ui', {}).get('default_theme') or 'light'
+DEFAULT_THEME = str(_theme_raw).strip() or 'light'
+if not get_theme_css(str(THEMES_DIR), DEFAULT_THEME):
+    logger.warning(
+        "Configured default theme %r (from %s) was not found in %s; falling back to 'light'",
+        DEFAULT_THEME,
+        _theme_source,
+        THEMES_DIR,
+    )
+    DEFAULT_THEME = 'light'
+else:
+    logger.info("Default theme: %s (from %s)", DEFAULT_THEME, _theme_source)
 
 if DEMO_MODE:
     # Enable rate limiting for demo deployments
@@ -286,13 +337,139 @@ plugin_manager = PluginManager(config['storage']['plugins_dir'])
 plugin_manager.run_hook('on_app_startup')
 
 
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/javascript", ".mjs")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("font/woff", ".woff")
+mimetypes.add_type("font/woff2", ".woff2")
+
 # Mount static files
 static_path = Path(__file__).parent.parent / "frontend"
-app.mount("/static", StaticFiles(directory=static_path), name="static")
+
+
+class VersionedStaticFiles(StaticFiles):
+    """StaticFiles that lets browsers keep version-addressed assets indefinitely.
+
+    Two kinds of URL can never change content for a given address: anything asked
+    for with a ?v=<release> query (our own scripts, see _render_app_name_html) and
+    the vendored bundler chunks, whose filenames embed a content hash. Caching
+    those forever removes a revalidation round trip per file on every page load,
+    which for a Mermaid diagram alone is two dozen of them. The HTML that names
+    them always revalidates, so an upgraded client still picks up new URLs at once.
+
+    Everything else keeps the default last-modified revalidation.
+    """
+
+    IMMUTABLE = "public, max-age=31536000, immutable"
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        response = super().file_response(full_path, stat_result, scope, status_code)
+        query = parse_qs(scope.get("query_string", b"").decode("latin-1"))
+        content_hashed = scope.get("path", "").startswith("/vendor/mermaid/chunks/")
+        if "v" in query or content_hashed:
+            response.headers["Cache-Control"] = self.IMMUTABLE
+        return response
+
+
+app.mount("/static", VersionedStaticFiles(directory=static_path), name="static")
+
+
+def _check_vendored_assets() -> None:
+    """Warn if the UI references browser libraries that were never downloaded.
+
+    Reads the expected set out of index.html rather than keeping a second list in
+    sync, so adding a library or changing its path cannot silently escape this.
+    Only entry points are checked, not every font or lazy-loaded chunk.
+    """
+    index_file = static_path / "index.html"
+    if not index_file.exists():
+        return
+
+    try:
+        markup = index_file.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    referenced = set(re.findall(r'["\']/static/(vendor/[^"\']+)["\']', markup))
+    missing = sorted(path for path in referenced if not (static_path / path).exists())
+    if not missing:
+        logger.info("Vendored browser libraries: %d present", len(referenced))
+        return
+
+    logger.warning(
+        "%d of %d vendored browser libraries are missing - the web UI will not load",
+        len(missing), len(referenced),
+    )
+    for path in missing[:5]:
+        logger.warning("    missing: frontend/%s", path)
+    if len(missing) > 5:
+        logger.warning("    ... and %d more", len(missing) - 5)
+    logger.warning("    Fix with: python scripts/vendor_assets.py")
+
+
+_check_vendored_assets()
+
+
+# __APP_VERSION__ lands in a query string in index.html and in the service worker's
+# copy of that same URL. Both must resolve to identical text or the worker precaches
+# an address the page never asks for, so they share this one encoded value.
+version_token = quote_plus(version)
+
+
+# The app name is admin-controlled configuration rather than user input, but it
+# still has to be escaped for the context it lands in: an unescaped quote or
+# angle bracket in the name would corrupt the HTML attribute or JSON string
+# literal it is substituted into.
+def _render_app_name_html(content: str) -> str:
+    """Substitute __APP_NAME__ and __APP_VERSION__ placeholders in an HTML document.
+
+    The version turns our own scripts into per-release URLs. Without it an upgraded
+    client can pair new HTML with the previous app.js still held by the service
+    worker, which breaks the page until a manual reload.
+    """
+    content = content.replace('__APP_NAME__', html_escape(config['app']['name'], quote=True))
+    return content.replace('__APP_VERSION__', version_token)
+
+
+def _render_app_name_json(content: str) -> str:
+    """Substitute __APP_NAME__ placeholders inside JSON string literals."""
+    return content.replace('__APP_NAME__', json.dumps(config['app']['name'])[1:-1])
+
+
+def _html_page_response(content: str, request: Request) -> Response:
+    """Serve a rendered page that always revalidates but rarely re-downloads.
+
+    no-cache stops a browser from pairing a cached page with scripts from a
+    different release; the ETag, taken from the rendered bytes themselves, turns
+    that revalidation into a 304 whenever nothing actually changed.
+    """
+    etag = '"' + hashlib.sha256(content.encode('utf-8')).hexdigest()[:16] + '"'
+    headers = {"Cache-Control": "no-cache", "ETag": etag}
+    if_none_match = request.headers.get("if-none-match", "")
+    if etag in [tag.strip().removeprefix("W/") for tag in if_none_match.split(",")]:
+        return Response(status_code=304, headers=headers)
+    return HTMLResponse(content=content, headers=headers)
+
+
+# PWA manifest - served from root rather than /static because the service worker
+# serves /static/ cache-first, which would pin a stale app name.
+@app.get("/manifest.json", include_in_schema=False)
+# Fetched on every page load alongside /sw.js, so this tracks the catch-all page limit.
+@limiter.limit("120/minute")
+async def pwa_manifest(request: Request):
+    """Serve the PWA manifest with the configured app name injected."""
+    manifest_path = static_path / "manifest.json"
+    if not manifest_path.exists():
+        raise HTTPException(status_code=404, detail="Manifest not found")
+    async with aiofiles.open(manifest_path, 'r', encoding='utf-8') as f:
+        content = await f.read()
+    return Response(content=_render_app_name_json(content), media_type="application/manifest+json")
+
 
 # PWA Service Worker - must be served from root for proper scope
 @app.get("/sw.js", include_in_schema=False)
-@limiter.limit("30/minute")
+# Fetched on every page load alongside /manifest.json.
+@limiter.limit("120/minute")
 async def service_worker(request: Request):
     """Serve the PWA service worker from root path for proper scope.
     Injects the app version from VERSION file for cache invalidation."""
@@ -300,8 +477,8 @@ async def service_worker(request: Request):
     if sw_path.exists():
         async with aiofiles.open(sw_path, 'r', encoding='utf-8') as f:
             content = await f.read()
-        # Inject app version into cache name
-        content = content.replace('__APP_VERSION__', version)
+        # Same token as index.html: it names the cache and the precached app.js URL
+        content = content.replace('__APP_VERSION__', version_token)
         return Response(content=content, media_type="application/javascript")
     raise HTTPException(status_code=404, detail="Service worker not found")
 
@@ -458,10 +635,10 @@ async def login_page(request: Request, error: str = None):
         content = await f.read()
     
     # Inject app name throughout the login page
-    app_name = config['app']['name']
-    content = content.replace('NoteDiscovery', app_name)
+    content = _render_app_name_html(content)
+    content = content.replace('__DEFAULT_THEME__', DEFAULT_THEME)
     
-    return content
+    return _html_page_response(content, request)
 
 
 @app.post("/login", include_in_schema=False)
@@ -520,6 +697,8 @@ async def get_config():
         "demoMode": DEMO_MODE,  # Expose demo mode flag to frontend
         "alreadyDonated": ALREADY_DONATED,  # Hide support buttons if true
         "autosaveDelayMs": AUTOSAVE_DELAY_MS,  # Debounce for note/drawing autosave
+        "defaultTheme": DEFAULT_THEME,  # Used when the browser has no saved preference
+        "uploadMaxNoteMb": UPLOAD_MAX_NOTE_MB,  # Client-side size cap for .md drops
         "authentication": {
             "enabled": config.get('authentication', {}).get('enabled', False)
         }
@@ -529,16 +708,14 @@ async def get_config():
 @api_router.get("/themes", tags=["Themes"])
 async def list_themes():
     """Get all available themes"""
-    themes_dir = Path(__file__).parent.parent / "themes"
-    themes = get_available_themes(str(themes_dir))
+    themes = get_available_themes(str(THEMES_DIR))
     return {"themes": themes}
 
 
 @app.get("/api/themes/{theme_id}", tags=["Themes"]) # Don't use the router here, as we want this route unsecured
 async def get_theme(theme_id: str):
     """Get CSS for a specific theme"""
-    themes_dir = Path(__file__).parent.parent / "themes"
-    css = get_theme_css(str(themes_dir), theme_id)
+    css = get_theme_css(str(THEMES_DIR), theme_id)
     
     if not css:
         raise HTTPException(status_code=404, detail="Theme not found")
@@ -1245,7 +1422,10 @@ async def get_note(note_path: str, include_backlinks: bool = True):
 
 
 @api_router.post("/notes/{note_path:path}", tags=["Notes"])
-@limiter.limit("60/minute")
+# This is the autosave endpoint. With autosave_delay_ms at its 1000ms default a single
+# editing session can approach one request per second on its own, so the limit has to
+# sit well clear of that or active typing starts failing to save.
+@limiter.limit("300/minute")
 async def create_or_update_note(request: Request, note_path: str, content: dict):
     """Create or update a note"""
     try:
@@ -1410,11 +1590,10 @@ async def export_note_to_html(request: Request, note_path: str, theme: Optional[
         content_with_links = convert_wikilinks_to_html(content_with_images)
         
         # Get theme CSS
-        themes_dir = Path(__file__).parent.parent / "themes"
         theme_name = theme or 'light'
-        theme_css = get_theme_css(str(themes_dir), theme_name)
+        theme_css = get_theme_css(str(THEMES_DIR), theme_name)
         if not theme_css:
-            theme_css = get_theme_css(str(themes_dir), "light")
+            theme_css = get_theme_css(str(THEMES_DIR), "light")
             theme_name = "light"
         
         # Strip data-theme selector
@@ -1428,13 +1607,15 @@ async def export_note_to_html(request: Request, note_path: str, theme: Optional[
         # Get note title
         title = Path(note_path).stem
         
-        # Generate HTML (show print button only when not downloading)
+        # A download has to render anywhere, so it keeps the CDN URLs; the print
+        # preview is served by us and can use the vendored copies.
         html_content = generate_export_html(
             title=title,
             content=content_with_links,
             theme_css=theme_css,
             is_dark=is_dark,
-            show_print_button=not download
+            show_print_button=not download,
+            local_assets=not download
         )
         
         # Return as downloadable file or inline (for print preview)
@@ -1782,10 +1963,9 @@ async def view_shared_note(request: Request, token: str):
         content_with_links = convert_wikilinks_to_html(content_with_images)
         
         # Use the theme that was set when sharing
-        themes_dir = Path(__file__).parent.parent / "themes"
-        theme_css = get_theme_css(str(themes_dir), theme)
+        theme_css = get_theme_css(str(THEMES_DIR), theme)
         if not theme_css:
-            theme_css = get_theme_css(str(themes_dir), "light")
+            theme_css = get_theme_css(str(THEMES_DIR), "light")
             theme = "light"
         
         # Strip data-theme selector
@@ -1799,12 +1979,13 @@ async def view_shared_note(request: Request, token: str):
         # Get note title
         title = Path(note_path).stem
         
-        # Generate HTML
+        # Served by this instance, so the vendored libraries are reachable
         html_content = generate_export_html(
             title=title,
             content=content_with_links,
             theme_css=theme_css,
-            is_dark=is_dark
+            is_dark=is_dark,
+            local_assets=True
         )
         
         return HTMLResponse(content=html_content)
@@ -1841,8 +2022,7 @@ async def catch_all(full_path: str, request: Request):
     index_path = static_path / "index.html"
     async with aiofiles.open(index_path, 'r', encoding='utf-8') as f:
         content = await f.read()
-    app_name = config['app']['name']
-    return content.replace('<title>NoteDiscovery</title>', f'<title>{app_name}</title>')
+    return _html_page_response(_render_app_name_html(content), request)
 
 
 # ============================================================================

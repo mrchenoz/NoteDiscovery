@@ -2,6 +2,7 @@
   <img alt="GitHub Stars" src="https://img.shields.io/github/stars/gamosoft/notediscovery?style=flat">
   <img alt="Build" src="https://img.shields.io/github/actions/workflow/status/gamosoft/notediscovery/docker-publish.yml">
   <img alt="Latest Version" src="https://img.shields.io/github/v/tag/gamosoft/notediscovery">
+  <a href="https://github.com/gamosoft/NoteDiscovery/pkgs/container/notediscovery"><img alt="GHCR Pulls" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fgamosoft%2FNoteDiscovery%2Fstats%2Fghcr.json&style=flat"></a>
   <img alt="License" src="https://img.shields.io/github/license/gamosoft/notediscovery">
 </p>
 
@@ -63,6 +64,7 @@ NoteDiscovery is a **lightweight, self-hosted note-taking application** that put
 ### Key Benefits
 
 - 🔒 **Total Privacy** - Your notes never leave your server
+- 📴 **No CDN Required** - The app and its shared links serve every browser library locally, so they work on air-gapped networks — see [documentation/THIRD_PARTY.md](documentation/THIRD_PARTY.md)
 - 🔐 **Optional Authentication** - Simple password protection for self-hosted deployments
 - 💰 **Zero Cost** - No subscriptions, no hidden fees
 - 🚀 **Fast & Lightweight** - Instant search and navigation
@@ -273,6 +275,7 @@ Want to learn more?
 - 🤖 **[MCP.md](documentation/MCP.md)** - AI assistant integration (Claude, Cursor, and more)
 - 🔐 **[AUTHENTICATION.md](documentation/AUTHENTICATION.md)** - Enable password protection for your instance
 - 🔧 **[ENVIRONMENT_VARIABLES.md](documentation/ENVIRONMENT_VARIABLES.md)** - Configure settings via environment variables
+- 📦 **[THIRD_PARTY.md](documentation/THIRD_PARTY.md)** - Locally hosted browser libraries, licences, and how to update them
 
 ## 🌍 Multiple Languages
 

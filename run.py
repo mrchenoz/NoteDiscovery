@@ -31,6 +31,30 @@ def get_port():
     return "8000"
 
 
+def ensure_frontend_assets():
+    """Download frontend/vendor/ on first start, so `python run.py` just works.
+
+    Not fatal on failure: only the web UI needs these, the API and MCP do not.
+    """
+    script = Path(__file__).parent / "scripts" / "vendor_assets.py"
+    if not script.exists():
+        return
+
+    already_present = subprocess.call(
+        [sys.executable, str(script), "--check"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ) == 0
+    if already_present:
+        return
+
+    # flush: the subprocess writes to the same stdout right after this
+    print("Downloading frontend libraries...", flush=True)
+    if subprocess.call([sys.executable, str(script)]) != 0:
+        print("WARNING: frontend libraries could not be downloaded.")
+        print("         The web UI will not load until you run:")
+        print("         python scripts/vendor_assets.py")
+
+
 def main():
     try:
         import fastapi  # noqa: F401
@@ -38,6 +62,8 @@ def main():
     except ImportError:
         print("Installing dependencies...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+
+    ensure_frontend_assets()
 
     port = get_port()
     print(f"📝 NoteDiscovery → http://localhost:{port}  (Ctrl+C to stop)")

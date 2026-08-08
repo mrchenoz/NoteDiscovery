@@ -233,8 +233,7 @@
   "media": {
     "confirm_delete": "Izbrišem \"{{name}}\"?",
     "upload_failed": "Nalaganje datoteke ni uspelo",
-    "no_valid_files": "Ni najdenih veljavnih datotek. Podprto: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "Ni najdenih veljavnih datotek. Podprto: {{formats}}"
   },
   "move": {
     "failed_note": "Napaka pri premikanju zapisa.",
@@ -281,7 +280,9 @@
     "new_button_option_drawing": "Nova risba",
     "new_button_option_excalidraw": "Nov Excalidraw",
     "auto_fill_note_title": "Časovni žig v naslovu",
-    "auto_fill_note_title_desc": "llllmmddUUMMSS. Enter potrdi, tipkanje zamenja."
+    "auto_fill_note_title_desc": "llllmmddUUMMSS. Enter potrdi, tipkanje zamenja.",
+    "smart_scroll_sync": "Pametna sinhronizacija drsenja",
+    "smart_scroll_sync_desc": "Poravna naslove, slike in tabele med podoknoma. Izklopljeno: odstotkovno drsenje."
   },
   "homepage": {
     "title": "Domov",

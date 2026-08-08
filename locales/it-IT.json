@@ -233,8 +233,7 @@
   "media": {
     "confirm_delete": "Eliminare \"{{name}}\"?",
     "upload_failed": "Caricamento file fallito",
-    "no_valid_files": "Nessun file valido trovato. Supportati: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "Nessun file valido trovato. Supportati: {{formats}}"
   },
   "move": {
     "failed_note": "Impossibile spostare la nota.",
@@ -281,7 +280,9 @@
     "new_button_option_drawing": "Nuovo disegno",
     "new_button_option_excalidraw": "Nuovo Excalidraw",
     "auto_fill_note_title": "Compila titolo con timestamp",
-    "auto_fill_note_title_desc": "aaaammddHHMMSS. Invio accetta, digita per sostituire."
+    "auto_fill_note_title_desc": "aaaammddHHMMSS. Invio accetta, digita per sostituire.",
+    "smart_scroll_sync": "Sincronizzazione intelligente",
+    "smart_scroll_sync_desc": "Allinea titoli, immagini e tabelle tra i pannelli. Disattivato: scorrimento percentuale."
   },
   "homepage": {
     "title": "Home",

@@ -233,8 +233,7 @@
   "media": {
     "confirm_delete": "删除 \"{{name}}\"？",
     "upload_failed": "上传文件失败",
-    "no_valid_files": "未找到有效文件。支持：JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "未找到有效文件。支持：{{formats}}"
   },
   "move": {
     "failed_note": "移动笔记失败。",
@@ -281,7 +280,9 @@
     "new_button_option_drawing": "新建绘图",
     "new_button_option_excalidraw": "新建 Excalidraw",
     "auto_fill_note_title": "用时间戳自动填充标题",
-    "auto_fill_note_title_desc": "yyyymmddHHMMSS。Enter 接受，输入以替换。"
+    "auto_fill_note_title_desc": "yyyymmddHHMMSS。Enter 接受，输入以替换。",
+    "smart_scroll_sync": "智能滚动同步",
+    "smart_scroll_sync_desc": "在两个窗格间对齐标题、图片和表格。关闭时使用百分比滚动。"
   },
   "homepage": {
     "title": "首页",

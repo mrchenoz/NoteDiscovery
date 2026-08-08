@@ -233,8 +233,7 @@
   "media": {
     "confirm_delete": "「{{name}}」を削除しますか？",
     "upload_failed": "ファイルのアップロードに失敗しました",
-    "no_valid_files": "有効なファイルが見つかりません。対応: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "有効なファイルが見つかりません。対応: {{formats}}"
   },
   "move": {
     "failed_note": "ノートの移動に失敗しました。",
@@ -281,7 +280,9 @@
     "new_button_option_drawing": "新規お絵描き",
     "new_button_option_excalidraw": "新規 Excalidraw",
     "auto_fill_note_title": "タイトルに日時を自動入力",
-    "auto_fill_note_title_desc": "yyyymmddHHMMSS。Enterで確定、入力で置換。"
+    "auto_fill_note_title_desc": "yyyymmddHHMMSS。Enterで確定、入力で置換。",
+    "smart_scroll_sync": "スマートスクロール同期",
+    "smart_scroll_sync_desc": "見出し・画像・表をペイン間で揃えます。オフの場合は割合ベースのスクロール。"
   },
   "homepage": {
     "title": "ホーム",

@@ -391,7 +391,8 @@ def generate_export_html(
     content: str,
     theme_css: str,
     is_dark: bool = False,
-    show_print_button: bool = False
+    show_print_button: bool = False,
+    local_assets: bool = False
 ) -> str:
     """
     Generate a standalone HTML document for a note.
@@ -403,6 +404,9 @@ def generate_export_html(
         theme_css: CSS content for theming
         is_dark: Whether using a dark theme (for Mermaid/Highlight.js)
         show_print_button: Whether to show a print button (for preview mode)
+        local_assets: Load libraries from this server's /static/vendor/ instead of
+            CDNs. Only safe when the page is served by us (shared links, print
+            preview), never for a file the user downloads and opens elsewhere.
 
     Returns:
         Complete HTML document as string
@@ -418,6 +422,24 @@ def generate_export_html(
     
     highlight_theme = 'github-dark' if is_dark else 'github'
     mermaid_theme = 'dark' if is_dark else 'default'
+
+    # Versions must match scripts/vendor_assets.py, so that a page renders the same
+    # whether it came from the vendored copies or from the CDNs.
+    if local_assets:
+        hljs_css = f'/static/vendor/highlight.js/styles/{highlight_theme}.min.css'
+        hljs_js = '/static/vendor/highlight.js/highlight.min.js'
+        marked_js = '/static/vendor/marked/marked.min.js'
+        purify_js = '/static/vendor/dompurify/purify.min.js'
+        mathjax_js = '/static/vendor/mathjax/tex-mml-chtml.js'
+        mermaid_mjs = '/static/vendor/mermaid/mermaid.esm.min.mjs'
+    else:
+        hljs_base = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0'
+        hljs_css = f'{hljs_base}/styles/{highlight_theme}.min.css'
+        hljs_js = f'{hljs_base}/highlight.min.js'
+        marked_js = 'https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js'
+        purify_js = 'https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js'
+        mathjax_js = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js'
+        mermaid_mjs = 'https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.esm.min.mjs'
     
     # Print toolbar HTML (only shown in preview mode)
     print_toolbar_html = '''
@@ -445,14 +467,14 @@ def generate_export_html(
     <title>{title}</title>
     
     <!-- Highlight.js for code syntax highlighting -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/{highlight_theme}.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="{hljs_css}">
+    <script src="{hljs_js}"></script>
     
     <!-- Marked.js for markdown parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+    <script src="{marked_js}"></script>
     
     <!-- DOMPurify for HTML sanitization (XSS prevention) -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
+    <script src="{purify_js}"></script>
     
     <!-- MathJax for LaTeX math rendering -->
     <script>
@@ -478,11 +500,11 @@ def generate_export_html(
             }}
         }};
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+    <script src="{mathjax_js}"></script>
     
     <!-- Mermaid.js for diagrams -->
     <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.esm.min.mjs';
+        import mermaid from '{mermaid_mjs}';
         mermaid.initialize({{ 
             startOnLoad: false,
             theme: '{mermaid_theme}',
@@ -687,7 +709,9 @@ def generate_export_html(
         .markdown-preview input[type="checkbox"] {{
             margin-right: 0.5em;
         }}
-        .markdown-preview li:has(> input[type="checkbox"]) {{
+        /* Loose lists wrap item content in a <p>, so both shapes need covering. */
+        .markdown-preview li:has(> input[type="checkbox"]),
+        .markdown-preview li:has(> p > input[type="checkbox"]) {{
             list-style: none;
             margin-left: -1.25em;
         }}

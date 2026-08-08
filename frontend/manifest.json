@@ -1,5 +1,5 @@
 {
-  "name": "NoteDiscovery",
+  "name": "__APP_NAME__",
   "short_name": "Notes",
   "description": "A beautiful, self-hosted markdown notes application",
   "start_url": "/",

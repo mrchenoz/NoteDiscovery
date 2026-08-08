@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-app-name="__APP_NAME__">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - NoteDiscovery</title>
+    <title>Login - __APP_NAME__</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/static/manifest.json">
+    <!-- PWA Manifest (served from root so the service worker does not cache a stale app name) -->
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#667eea">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NoteDiscovery">
+    <meta name="apple-mobile-web-app-title" content="__APP_NAME__">
     
     <!-- Preload translations (same approach as index.html) -->
     <script>
@@ -51,7 +51,7 @@
     <script>
         // Load theme immediately (same approach as index.html)
         (async function() {
-            const savedTheme = localStorage.getItem('noteDiscoveryTheme') || 'light';
+            const savedTheme = localStorage.getItem('noteDiscoveryTheme') || '__DEFAULT_THEME__';
             
             try {
                 const response = await fetch(`/api/themes/${savedTheme}`);
@@ -230,8 +230,8 @@
 </head>
 <body>
     <div class="login-container">
-        <img src="/static/logo.svg" alt="NoteDiscovery" class="logo">
-        <h1>NoteDiscovery</h1>
+        <img src="/static/logo.svg" alt="__APP_NAME__" class="logo">
+        <h1>__APP_NAME__</h1>
         <p class="tagline" id="tagline"></p>
         
         <form method="post" action="/login">
@@ -267,7 +267,8 @@
         document.getElementById('password').placeholder = t('login.password_placeholder');
         document.getElementById('submit-btn').textContent = t('login.unlock_button');
         document.getElementById('footer-text').textContent = t('login.footer');
-        document.title = t('login.title') + ' - NoteDiscovery';
+        // Read from the data attribute so the name is escaped once, as HTML
+        document.title = t('login.title') + ' - ' + document.documentElement.dataset.appName;
         
         // Handle error from URL params
         var urlParams = new URLSearchParams(window.location.search);
@@ -282,4 +283,3 @@
     </script>
 </body>
 </html>
-

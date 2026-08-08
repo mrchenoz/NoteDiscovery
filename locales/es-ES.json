@@ -234,8 +234,7 @@
   "media": {
     "confirm_delete": "¿Eliminar \"{{name}}\"?",
     "upload_failed": "Error al subir archivo",
-    "no_valid_files": "No se encontraron archivos válidos. Soporta: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "No se encontraron archivos válidos. Soporta: {{formats}}"
   },
   "move": {
     "failed_note": "Error al mover la nota.",
@@ -282,7 +281,9 @@
     "new_button_option_drawing": "Nuevo dibujo",
     "new_button_option_excalidraw": "Nuevo Excalidraw",
     "auto_fill_note_title": "Título con marca de tiempo",
-    "auto_fill_note_title_desc": "aaaammddHHMMSS. Intro acepta, escribe para reemplazar."
+    "auto_fill_note_title_desc": "aaaammddHHMMSS. Intro acepta, escribe para reemplazar.",
+    "smart_scroll_sync": "Sincronización inteligente",
+    "smart_scroll_sync_desc": "Alinea encabezados, imágenes y tablas entre paneles. Desactivado: desplazamiento por porcentaje."
   },
   "homepage": {
     "title": "Inicio",

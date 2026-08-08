@@ -8,11 +8,13 @@ services:
     environment:
       - TZ=UTC
     volumes:
+      # Required: Your notes
       - ./data:/app/data
-      # Uncomment to customize (files/folders must exist first):
+      # Optional: Uncomment to customize (file/folder must exist with content!)
       # - ./config.yaml:/app/config.yaml
-      # - ./plugins:/app/plugins
       # - ./themes:/app/themes
+      # - ./plugins:/app/plugins
+      # - ./locales:/app/locales
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s

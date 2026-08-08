@@ -234,8 +234,7 @@
   "media": {
     "confirm_delete": "Biztos törlöd a következőt:  \"{{name}}\"?",
     "upload_failed": "Hiba a fájl feltöltése során",
-    "no_valid_files": "Nem található érvényes fájl. Támogatott formátumok: JPG, PNG, GIF, WebP, MP3, MP4, PDF",
-    "formats": "JPG, PNG, GIF, WebP, MP3, MP4, PDF"
+    "no_valid_files": "Nem található érvényes fájl. Támogatott formátumok: {{formats}}"
   },
   "move": {
     "failed_note": "Hiba a jegyzet mozgatásánál.",
@@ -282,7 +281,9 @@
     "new_button_option_drawing": "Új rajz",
     "new_button_option_excalidraw": "Új Excalidraw",
     "auto_fill_note_title": "Cím kitöltése időbélyeggel",
-    "auto_fill_note_title_desc": "éééé.hh.nn.ÓÓ.PP.MM."
+    "auto_fill_note_title_desc": "éééé.hh.nn.ÓÓ.PP.MM.",
+    "smart_scroll_sync": "Intelligens görgetés",
+    "smart_scroll_sync_desc": "Összehangolja a címsorokat, képeket és táblázatokat a panelek között. Kikapcsolva: százalékos görgetés."
   },
   "homepage": {
     "title": "Főoldal",

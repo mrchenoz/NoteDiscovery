@@ -1,6 +1,8 @@
 # NoteDiscovery Configuration
 
 app:
+  # Name shown in the UI, the login page and the browser title.
+  # Override via the APP_NAME env var.
   name: "NoteDiscovery"
   
 server:
@@ -25,6 +27,11 @@ search:
 
 # User interface behavior
 ui:
+  # Theme used when a browser has not saved a theme preference yet.
+  # Use a theme ID from the themes directory (the CSS filename without .css).
+  # Override via the DEFAULT_THEME env var. Invalid values fall back to 'light'.
+  default_theme: "light"
+
   # Autosave debounce in milliseconds (applies to note typing and drawing autosave).
   # Lower = saves more often (more disk writes); higher = saves less often.
   # Override via the AUTOSAVE_DELAY_MS env var. Server clamps to 250-60000ms.
@@ -59,4 +66,3 @@ authentication:
   #
   # Leave empty to disable API key authentication (only session auth works)
   api_key: ""
-

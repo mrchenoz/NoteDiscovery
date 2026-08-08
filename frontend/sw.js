@@ -6,11 +6,12 @@
 // This forces users to download fresh files when you release a new version.
 const CACHE_NAME = 'notediscovery-__APP_VERSION__';
 
-// Assets to cache for faster repeat visits
+// Assets to cache for faster repeat visits. app.js carries the same ?v= as the
+// script tag in index.html, so this precaches the URL the page actually requests.
 const PRECACHE_ASSETS = [
   '/static/logo.svg',
   '/static/favicon.svg',
-  '/static/app.js'
+  '/static/app.js?v=__APP_VERSION__'
 ];
 
 // Install event - cache essential assets

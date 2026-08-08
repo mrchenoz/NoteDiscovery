@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoteDiscovery</title>
+    <title>__APP_NAME__</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -11,22 +11,22 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.svg">
     <link rel="apple-touch-icon" href="/static/logo.svg">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/static/manifest.json">
+    <!-- PWA Manifest (served from root so the service worker does not cache a stale app name) -->
+    <link rel="manifest" href="/manifest.json">
     
     <!-- PWA Meta Tags -->
-    <meta name="application-name" content="NoteDiscovery">
+    <meta name="application-name" content="__APP_NAME__">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="NoteDiscovery">
+    <meta name="apple-mobile-web-app-title" content="__APP_NAME__">
     <meta name="mobile-web-app-capable" content="yes">
     <!-- Theme color: initial value, updated dynamically by app.js when theme changes -->
     <meta name="theme-color" content="#667eea">
     <meta name="msapplication-TileColor" content="#667eea">
     <meta name="msapplication-tap-highlight" content="no">
     
-    <!-- Tailwind CSS from CDN (v3.4.17) -->
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Libraries in /static/vendor/ are downloaded by scripts/vendor_assets.py -->
+    <script src="/static/vendor/tailwindcss/tailwind.min.js"></script>
     
     <!-- Preload translations before Alpine initializes -->
     <script>
@@ -57,16 +57,12 @@
         })();
     </script>
     
-    <!-- Alpine.js (v3.14.1) -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script defer src="/static/vendor/alpinejs/cdn.min.js"></script>
+    <script src="/static/vendor/marked/marked.min.js"></script>
     
-    <!-- Marked.js for Markdown parsing (v12.0.2) -->
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <!-- Sanitizes rendered Markdown (XSS prevention) -->
+    <script src="/static/vendor/dompurify/purify.min.js"></script>
     
-    <!-- DOMPurify for HTML sanitization (XSS prevention) -->
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
-    
-    <!-- MathJax for LaTeX math rendering -->
     <script>
         MathJax = {
             tex: {
@@ -85,23 +81,24 @@
             }
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js"></script>
+    <!-- Fonts and TeX extensions load relative to this script's path -->
+    <script src="/static/vendor/mathjax/tex-mml-chtml.js"></script>
     
-    <!-- Highlight.js for code syntax highlighting (v11.9.0) -->
+    <!-- Theme set by app.js to match the active app theme -->
     <link rel="stylesheet" id="highlight-theme" href="">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/shell.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/powershell.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/http.min.js"></script>
+    <script src="/static/vendor/highlight.js/highlight.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/csharp.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/python.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/bash.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/shell.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/powershell.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/javascript.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/typescript.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/json.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/sql.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/yaml.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/css.min.js"></script>
+    <script src="/static/vendor/highlight.js/languages/http.min.js"></script>
     
     <!-- Excalidraw (vector sketch editor) — import map lets the lazily-loaded ESM build
          resolve its React peer deps. The editor bundle itself is only fetched by
@@ -117,17 +114,9 @@
     }
     </script>
 
-    <!-- Mermaid.js for diagram rendering -->
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.esm.min.mjs';
-        // Note: Mermaid is initialized dynamically by app.js renderMermaid() based on current theme
-        window.mermaid = mermaid;
-    </script>
-    
-    <!-- vis-network for graph visualization (v9.1.9) -->
-    <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
-    <!-- QR Code generator for share links -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <!-- Mermaid is not loaded here: renderMermaid() imports it on first diagram -->
+    <script src="/static/vendor/vis-network/vis-network.min.js"></script>
+    <script src="/static/vendor/qrcode-generator/qrcode.min.js"></script>
     
     <!-- Theme styles will be loaded dynamically -->
     <link rel="stylesheet" id="theme-stylesheet" href="">
@@ -591,7 +580,14 @@
         .markdown-preview input[type="checkbox"] {
             margin-right: 0.5rem;
         }
-        .markdown-preview li:has(> input[type="checkbox"]) {
+        /* Exports keep them disabled, so only the live preview gets the affordance */
+        .markdown-preview input[type="checkbox"]:not([disabled]) {
+            cursor: pointer;
+        }
+        /* Loose lists (a blank line anywhere in them) wrap item content in a <p>,
+           so both shapes need covering or the bullet reappears next to the box. */
+        .markdown-preview li:has(> input[type="checkbox"]),
+        .markdown-preview li:has(> p > input[type="checkbox"]) {
             list-style: none;
             margin-left: -1.25rem;
         }
@@ -1519,7 +1515,7 @@
                 <!-- Logo -->
                 <img 
                     src="/static/logo.svg" 
-                    alt="NoteDiscovery" 
+                    alt="__APP_NAME__" 
                     class="icon-rail-logo"
                     @click="goHome()"
                     :title="t('sidebar.go_to_homepage')"
@@ -2376,6 +2372,23 @@
                                     </label>
                                     <p class="text-xs mt-1" style="color: var(--text-tertiary);" x-text="t('settings.auto_fill_note_title_desc')"></p>
                                 </div>
+
+                                <div class="mb-4">
+                                    <label class="flex items-center justify-between gap-3 cursor-pointer">
+                                        <span class="text-xs font-medium flex-1 min-w-0" style="color: var(--text-secondary);" x-text="t('settings.smart_scroll_sync')"></span>
+                                        <div
+                                            @click="smartScrollSync = !smartScrollSync; localStorage.setItem('smartScrollSync', smartScrollSync)"
+                                            class="relative w-10 h-5 rounded-full transition-colors cursor-pointer flex-shrink-0"
+                                            :style="smartScrollSync ? 'background-color: var(--accent-primary)' : 'background-color: var(--bg-tertiary)'"
+                                        >
+                                            <div
+                                                class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform"
+                                                :style="'background-color: var(--bg-primary);' + (smartScrollSync ? ' transform: translateX(20px);' : '')"
+                                            ></div>
+                                        </div>
+                                    </label>
+                                    <p class="text-xs mt-1" style="color: var(--text-tertiary);" x-text="t('settings.smart_scroll_sync_desc')"></p>
+                                </div>
                                 
                                 <!-- Logout (if auth enabled) - uses authEnabled from main app state -->
                                 <div x-show="authEnabled" class="mb-4">
@@ -2428,7 +2441,8 @@
                                 rel="noopener noreferrer"
                                 class="inline-flex items-center transition-all hover:scale-105"
                             >
-                                <img src="https://www.pikapods.com/static/run-button.svg" alt="Run on PikaPods" style="height: 28px;">
+                                <!-- Served locally so opening Settings makes no third-party request -->
+                                <img src="/static/pikapods-run-button.svg" alt="Run on PikaPods" style="height: 28px;">
                             </a>
                             <!-- Link to hide these buttons -->
                             <a 
@@ -3152,9 +3166,9 @@
                                     @dragenter="onEditorDragEnter($event)"
                                     @dragleave="onEditorDragLeave($event)"
                                     @paste="handlePaste($event)"
-                                    :class="'flex-1 w-full resize-none focus:outline-none editor-textarea' + (draggedItem && dropTarget === 'editor' ? ' link-drop-target' : '')"
-                                    :style="'background-color: var(--bg-primary); color: var(--text-primary);' + (draggedItem && dropTarget === 'editor' ? ' outline: 2px dashed var(--accent-primary); outline-offset: -2px; box-shadow: 0 0 20px var(--accent-light);' : '')"
-                                    :placeholder="draggedItem && dropTarget === 'editor' ? t('editor.drop_hint') : t('editor.placeholder')"
+                                    :class="'flex-1 w-full resize-none focus:outline-none editor-textarea' + ((draggedItem || externalDragActive) && dropTarget === 'editor' ? ' link-drop-target' : '')"
+                                    :style="'background-color: var(--bg-primary); color: var(--text-primary);' + ((draggedItem || externalDragActive) && dropTarget === 'editor' ? ' outline: 2px dashed var(--accent-primary); outline-offset: -2px; box-shadow: 0 0 20px var(--accent-light);' : '')"
+                                    :placeholder="(draggedItem || externalDragActive) && dropTarget === 'editor' ? t('editor.drop_hint') : t('editor.placeholder')"
                                 ></textarea>
                             </div>
                         </div>
@@ -3290,7 +3304,7 @@
                                 class="p-6 markdown-preview"
                                 :class="{ 'pt-2': getHasMetadata() && currentNote, 'readable-width': readableLineLength }"
                                 x-html="renderedMarkdown"
-                                @click="handleInternalLink($event)"
+                                @click="handlePreviewClick($event)"
                             ></div>
                         </div>
                         
@@ -4061,18 +4075,14 @@
     <nav class="mobile-bottom-tabs zen-hide" style="display: none;" role="navigation" aria-label="Main navigation">
         <button 
             class="mobile-bottom-tab"
-            :class="{'active': activePanel === 'files' && (mobileSidebarOpen || (!currentNote && !currentMedia && !showGraph))}"
+            :class="{'active': mobileSidebarOpen ? activePanel === 'files' : (!currentNote && !currentMedia && !showGraph)}"
             @click="mobileFilesTabClick()"
             :aria-label="t('sidebar.files')"
         >
-            <!-- Show home icon when viewing content, folder icon when on homepage -->
-            <svg x-show="currentNote || currentMedia || showGraph" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-            </svg>
-            <svg x-show="!currentNote && !currentMedia && !showGraph" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
             </svg>
-            <span x-text="(currentNote || currentMedia || showGraph) ? t('homepage.title') : t('sidebar.files')"></span>
+            <span x-text="t('sidebar.files')"></span>
         </button>
         <button 
             class="mobile-bottom-tab relative"
@@ -4114,7 +4124,7 @@
         </button>
         <button 
             class="mobile-bottom-tab"
-            :class="{'active': showGraph}"
+            :class="{'active': showGraph && !mobileSidebarOpen}"
             @click="showGraph = true; initGraph(); mobileSidebarOpen = false;"
             :aria-label="t('graph.title')"
         >
@@ -4137,9 +4147,10 @@
         </button>
     </nav>
     
-    <script src="/static/editor-markdown-continue.js"></script>
-    <script src="/static/excalidraw-editor.js"></script>
-    <script src="/static/app.js"></script>
+    <!-- ?v= is the app version, so a release cannot be served from a stale cache -->
+    <script src="/static/editor-markdown-continue.js?v=__APP_VERSION__"></script>
+    <script src="/static/excalidraw-editor.js?v=__APP_VERSION__"></script>
+    <script src="/static/app.js?v=__APP_VERSION__"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

@@ -10,6 +10,7 @@
 - **Undo/Redo** - Ctrl+Z / Ctrl+Y support
 - **Note templates** - Create notes from templates with dynamic placeholders
 - **Quick-create** - Set the **+ / New** button to skip the type chooser and create your most common item (note, folder, template, or drawing) in one click; **Shift+click** always shows the full chooser. Optionally pre-fill new note titles with a `yyyymmddHHMMSS` timestamp.
+- **Interactive task lists** - Click a `- [ ]` checkbox or its text in the preview to tick it; the change is written back to the note source and saved. Needs text after the brackets (`- [ ] task`, not `- [ ]`)
 - **Syntax highlighting** for code blocks (50+ languages)
 - **Copy code blocks** - One-click copy button on hover
 - **LaTeX/Math rendering** - Beautiful mathematical equations with MathJax (see [MATHJAX.md](MATHJAX.md))
@@ -18,7 +19,7 @@
 
 ### Media Support
 - **Drawing editor** — In-app **`drawing-*.png`** sketches next to your notes ([overview](#drawing-editor)); full guide: **[DRAWING.md](DRAWING.md)**
-- **Drag & drop upload** - Drop files from your file system directly into the editor
+- **Drag & drop upload** - Drop files from your file system into the editor: images/audio/video/PDF go to `_attachments`; `.md` files land next to the current note and get an inline link at the drop point
 - **Clipboard paste** - Paste images from clipboard with Ctrl+V
 - **Images** - JPG, PNG, GIF, WebP (default max 10MB, configurable)
 - **Audio** - MP3, WAV, OGG, M4A (default max 50MB, configurable)
@@ -123,6 +124,7 @@ To link to a heading, convert the heading text to a slug: **lowercase, spaces �
 - **Resizable sidebar** - Drag to adjust width
 - **Collapsible sidebar panel** - Show/hide the sidebar contents while keeping the icon rail in place
 - **View mode memory** - Remembers Edit/Split/Preview preference
+- **Smart scroll sync** - Optional (**Settings → Smart scroll sync**, off by default): aligns headings, images, tables and code blocks between the editor and preview panes instead of scrolling both by percentage
 - **Responsive design** - Works on all screen sizes
 
 ## 📊 Note Statistics
