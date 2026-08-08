@@ -104,8 +104,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/http.min.js"></script>
     
     <!-- Excalidraw (vector sketch editor) — import map lets the lazily-loaded ESM build
-         resolve its React peer deps. The editor bundle itself is only fetched by app.js
-         when a *.excalidraw file is first opened (see _excalidrawEnsureLib). -->
+         resolve its React peer deps. The editor bundle itself is only fetched by
+         excalidraw-editor.js when a *.excalidraw file is first opened. -->
     <script type="importmap">
     {
         "imports": {
@@ -4138,6 +4138,7 @@
     </nav>
     
     <script src="/static/editor-markdown-continue.js"></script>
+    <script src="/static/excalidraw-editor.js"></script>
     <script src="/static/app.js"></script>
     
     <!-- PWA Service Worker Registration -->

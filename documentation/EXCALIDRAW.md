@@ -28,7 +28,11 @@ The Excalidraw editor is a React component. NoteDiscovery stays build-free by lo
 The pinned versions live in two places that must stay in sync:
 
 - `frontend/index.html` — the `importmap` pinning `react` / `react-dom`
-- `frontend/app.js` — `CONFIG.EXCALIDRAW_ESM_URL`, `CONFIG.EXCALIDRAW_CSS_URL`, `CONFIG.EXCALIDRAW_ASSET_PATH`
+- `frontend/excalidraw-editor.js` — `ESM_URL`, `CSS_URL`, `ASSET_PATH`
+
+## Where the code lives
+
+The editor is self-contained in **`frontend/excalidraw-editor.js`** (loaded before `app.js`), which owns the lazy React/ESM loading, the scene autosave loop, and the mount/unmount lifecycle. It exposes `window.ExcalidrawEditor` with `createNew(app)`, `mount(app)`, `save()`, `teardown({flush})` and `mountedFor()`; `app.js` only forwards to those, so it carries none of the editor's internals.
 
 ## API
 
