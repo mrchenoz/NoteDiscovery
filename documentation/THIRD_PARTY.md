@@ -49,6 +49,42 @@ One non-library asset is served locally for the same reason:
 that opening Settings does not fetch an image from them. It is their brand asset
 and is used only to link to them.
 
+## The Excalidraw editor
+
+The Excalidraw editor (see [EXCALIDRAW.md](EXCALIDRAW.md)) is served from
+`/static/vendor/excalidraw/` for the same reasons, but it gets there differently:
+it is **built rather than downloaded**. Its published package externalises every
+dependency it has, and React 19 ships as CommonJS with no UMD build, so neither is
+loadable in a browser as published — a bundler has to resolve and convert them.
+`scripts/build_excalidraw` does that with esbuild.
+
+| Library | Version | Licence | Purpose |
+|---------|---------|---------|---------|
+| [Excalidraw](https://github.com/excalidraw/excalidraw) | 0.18.0 | MIT | Vector sketch editor |
+| [React](https://react.dev) | 19.0.0 | MIT | Required by Excalidraw, compiled into the bundle |
+
+Those two pull in a further ~143 transitive packages that esbuild inlines. The
+build writes a complete list, with licence texts, to
+`frontend/vendor/excalidraw/THIRD_PARTY_NOTICES.md`, and records the resolved
+versions in `MANIFEST.json`. The spread is 100 MIT, 32 ISC, and the remainder
+BSD-3-Clause, Apache-2.0, 0BSD, CC0-1.0, Unlicense and dual-licensed permissive
+combinations.
+
+**One exception to the "nothing copyleft" statement above:**
+[elkjs](https://github.com/kieler/elkjs) 0.9.3 is **EPL-2.0**, a weak copyleft
+licence. It arrives only through `@excalidraw/mermaid-to-excalidraw`, which powers
+Excalidraw's "Mermaid to Excalidraw" dialog. EPL-2.0 permits redistribution in
+binary/bundled form provided the licence text travels with it (it does, in
+`THIRD_PARTY_NOTICES.md`) and the source form remains available to recipients —
+elkjs is published unmodified on npm and GitHub, and NoteDiscovery does not modify
+it. The obligation attaches to elkjs itself, not to NoteDiscovery or to your notes.
+If you would rather not ship an EPL-2.0 component at all, dropping the
+mermaid-import feature removes elkjs, cytoscape and katex from the bundle.
+
+Total footprint is about 8.6 MB. Xiaolai, Excalidraw's CJK handwriting font, is
+excluded by default because it alone is 12 MB, against ~480 KB for every other
+font combined; pass `--with-cjk` to include it.
+
 ## How the files get there
 
 The libraries are **not committed to this repository**. `scripts/vendor_assets.py`
@@ -60,6 +96,12 @@ rejected rather than installed.
   complete and the container never needs internet for the UI.
 - **Source installs** — `run.py` runs the script automatically on first start.
   It needs internet that one time; afterwards it is a no-op.
+
+The Excalidraw bundle follows the same shape but needs Node rather than Python.
+Docker builds it in its own stage (2b), so the image again ships complete. For a
+source install, run it once by hand — `cd scripts/build_excalidraw && npm ci &&
+node build.mjs`. Until you do, everything except the Excalidraw editor works
+normally; opening a `.excalidraw` file reports that the editor failed to load.
 
 Each library is placed in `frontend/vendor/<library>/` together with its upstream
 `LICENSE` file, and `frontend/vendor/THIRD_PARTY_NOTICES.md` indexes the lot.

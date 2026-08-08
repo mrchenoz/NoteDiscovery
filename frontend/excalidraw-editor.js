@@ -12,13 +12,16 @@
     'use strict';
 
     /**
-     * The ESM bundle is loaded lazily on first use; its bare "react"/"react-dom"
-     * imports resolve through the import map declared in index.html, so the React
-     * version pinned there must stay compatible with this Excalidraw version.
+     * Vendored by scripts/build_excalidraw — a self-contained ESM bundle with React
+     * compiled in, so nothing here is fetched from a CDN and no import map is needed.
+     * Loaded lazily on first use; locales and the mermaid-import feature are split
+     * into chunks/ that the bundle pulls in on demand. Fonts resolve relative to
+     * ASSET_PATH. See documentation/EXCALIDRAW.md to rebuild or bump the version.
      */
-    const ESM_URL = 'https://esm.sh/@excalidraw/excalidraw@0.18.0/dist/prod/index.js?external=react,react-dom';
-    const CSS_URL = 'https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/index.css';
-    const ASSET_PATH = 'https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/';
+    const BASE = '/static/vendor/excalidraw/';
+    const ESM_URL = `${BASE}excalidraw.js`;
+    const CSS_URL = `${BASE}index.css`;
+    const ASSET_PATH = BASE;
 
     /** Fallback only; the runtime value comes from app.autosaveDelayMs (/api/config). */
     const DEFAULT_AUTOSAVE_DELAY_MS = 1000;
@@ -29,10 +32,8 @@
      * misbehave when their internals are read back through a proxy.
      */
     const EXCAL = {
-        libPromise: null,   // Promise resolving to this holder once lib/React are loaded
-        lib: null,          // @excalidraw/excalidraw module (Excalidraw, serializeAsJSON, …)
-        React: null,
-        ReactDOMClient: null,
+        libPromise: null,   // Promise resolving to this holder once the bundle is loaded
+        lib: null,          // vendored bundle (Excalidraw, serializeAsJSON, createElement, createRoot)
         root: null,         // React root currently mounted in the viewer pane
         api: null,          // ExcalidrawImperativeAPI for the mounted scene
         mountedFor: null,   // vault-relative path of the scene the editor is showing
@@ -72,14 +73,8 @@
         }
         // Excalidraw fetches fonts and other static assets relative to this base URL
         global.EXCALIDRAW_ASSET_PATH = ASSET_PATH;
-        EXCAL.libPromise = Promise.all([
-            import(ESM_URL),
-            import('react'),
-            import('react-dom/client'),
-        ]).then(([lib, React, ReactDOMClient]) => {
+        EXCAL.libPromise = import(ESM_URL).then((lib) => {
             EXCAL.lib = lib;
-            EXCAL.React = React;
-            EXCAL.ReactDOMClient = ReactDOMClient;
             return EXCAL;
         }).catch((err) => {
             EXCAL.libPromise = null; // allow a retry after a network failure
@@ -238,12 +233,12 @@
         // carry it as a plain object; Excalidraw expects a Map, so drop it.
         delete appState.collaborators;
 
-        EXCAL.root = EXCAL.ReactDOMClient.createRoot(host);
+        EXCAL.root = EXCAL.lib.createRoot(host);
         EXCAL.mountedFor = path;
         EXCAL.host = host;
         EXCAL.app = app;
         EXCAL.lastSavedJSON = null;
-        EXCAL.root.render(EXCAL.React.createElement(EXCAL.lib.Excalidraw, {
+        EXCAL.root.render(EXCAL.lib.createElement(EXCAL.lib.Excalidraw, {
             initialData: {
                 elements: (scene && Array.isArray(scene.elements)) ? scene.elements : [],
                 appState,

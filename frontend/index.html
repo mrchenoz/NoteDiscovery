@@ -100,20 +100,8 @@
     <script src="/static/vendor/highlight.js/languages/css.min.js"></script>
     <script src="/static/vendor/highlight.js/languages/http.min.js"></script>
     
-    <!-- Excalidraw (vector sketch editor) — import map lets the lazily-loaded ESM build
-         resolve its React peer deps. The editor bundle itself is only fetched by
-         excalidraw-editor.js when a *.excalidraw file is first opened. -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@19.0.0",
-            "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
-            "react-dom": "https://esm.sh/react-dom@19.0.0",
-            "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
-        }
-    }
-    </script>
-
+    <!-- Excalidraw is not loaded here either: excalidraw-editor.js imports the
+         vendored bundle when a *.excalidraw file is first opened -->
     <!-- Mermaid is not loaded here: renderMermaid() imports it on first diagram -->
     <script src="/static/vendor/vis-network/vis-network.min.js"></script>
     <script src="/static/vendor/qrcode-generator/qrcode.min.js"></script>

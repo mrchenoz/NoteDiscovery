@@ -21,18 +21,32 @@ The full Excalidraw component runs inside the app pane, so you get the complete 
 - New sketches created from the **+ New** menu are named **`drawing-{timestamp}.excalidraw`**, mirroring the raster drawing convention.
 - Files are standard Excalidraw scene JSON (`{"type": "excalidraw", "version": 2, "elements": [...], ...}`) — plain text, diff-able, and portable.
 
-## How it loads (CDN dependency)
+## How it loads
 
-The Excalidraw editor is a React component. NoteDiscovery stays build-free by loading React and the Excalidraw ESM bundle **lazily from CDN (esm.sh / unpkg) the first time you open a `.excalidraw` file** — the app itself starts without loading any of it. This matches how the app already loads its other frontend libraries, but it does mean the Excalidraw editor needs internet access on first use per session. Viewing notes and all other features remain fully offline.
+The editor is a React component, vendored into `frontend/vendor/excalidraw/` as a self-contained ESM bundle with React compiled in. Nothing is fetched from a CDN at runtime, so the editor works fully offline like the rest of the app. `excalidraw-editor.js` imports the bundle lazily, the first time you open a `.excalidraw` file — the app itself starts without loading any of it.
 
-The pinned versions live in two places that must stay in sync:
+Code splitting keeps that first load small: the entry chunk is ~750 KB (~180 KB gzipped), while the ~40 UI locales and the Mermaid-import feature load on demand.
 
-- `frontend/index.html` — the `importmap` pinning `react` / `react-dom`
-- `frontend/excalidraw-editor.js` — `ESM_URL`, `CSS_URL`, `ASSET_PATH`
+### Building the bundle
+
+Unlike the other browser libraries, Excalidraw can't go through `scripts/vendor_assets.py`. Its published build externalises every dependency it has (`jotai`, `roughjs`, `pako`, `@radix-ui/*`, …), and React 19 ships as CommonJS with no UMD build — neither is loadable in a browser as published, so a bundler has to resolve and convert them.
+
+Docker builds it automatically (stage 2b). For a local checkout it needs Node once:
+
+```bash
+cd scripts/build_excalidraw
+npm ci
+node build.mjs                # → frontend/vendor/excalidraw/
+node build.mjs --with-cjk     # also ship Xiaolai, the 12 MB CJK handwriting font
+```
+
+Versions are pinned in `scripts/build_excalidraw/package.json`; bump there and re-run to upgrade. The build writes `MANIFEST.json` and `THIRD_PARTY_NOTICES.md` alongside the bundle, covering all 145 packages it inlines — see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+Xiaolai is skipped by default purely for size: it is 12 MB against ~480 KB for every other font combined. Without it, CJK glyphs in a scene fall back to a system font.
 
 ## Where the code lives
 
-The editor is self-contained in **`frontend/excalidraw-editor.js`** (loaded before `app.js`), which owns the lazy React/ESM loading, the scene autosave loop, and the mount/unmount lifecycle. It exposes `window.ExcalidrawEditor` with `createNew(app)`, `mount(app)`, `save()`, `teardown({flush})` and `mountedFor()`; `app.js` only forwards to those, so it carries none of the editor's internals.
+The editor is self-contained in **`frontend/excalidraw-editor.js`** (loaded before `app.js`), which owns the lazy bundle load, the scene autosave loop, the scene keyboard shortcuts and the mount/unmount lifecycle. It exposes `window.ExcalidrawEditor` with `createNew(app)`, `mount(app)`, `save()`, `teardown({flush})` and `mountedFor()`; `app.js` only forwards to those, so it carries none of the editor's internals.
 
 ## API
 
