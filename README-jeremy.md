@@ -34,18 +34,6 @@ on first start.
 
 ## Known issues
 
-### Opening a scene rewrites its file
-
-Mounting a scene fires an autosave immediately, because `lastSavedJSON` starts
-`null` and Excalidraw emits an `onChange` on first render. The write is
-content-equivalent — no data is lost — but it re-serializes the file and bumps
-its mtime just from *viewing* it.
-
-Pre-existing since the original Excalidraw commit, not introduced by the module
-extraction. Fix would be to seed `lastSavedJSON` from the first post-render
-serialization in `mount()` (`frontend/excalidraw-editor.js`), so the first real
-edit is what triggers the first write.
-
 ### Cmd+Z undo not verified end-to-end
 
 Excalidraw's undo/redo is handled by the component itself. The **toolbar undo
@@ -83,6 +71,15 @@ Xiaolai is 12 MB, against ~480 KB for every other Excalidraw font combined, so
 
 ## Fixed along the way (don't re-investigate)
 
+- **Opening a scene rewrote its file.** `mount()` set `lastSavedJSON = null`, and
+  Excalidraw emits an `onChange` on first render (loading normalises the scene —
+  `"boundElements": null` becomes `[]`), so the dedupe guard in `save()` could
+  never match and every open wrote the file. Harmless for content, but it churned
+  mtime on read, which breaks sort-by-modified and makes Syncthing/Dropbox/git
+  vaults re-upload on every view. `mount()` now seeds `lastSavedJSON` with the
+  bytes it just read, so the comparison is against what is actually on disk.
+  Safe because the server writes the PUT body verbatim. A scene that isn't yet
+  canonical still costs exactly one normalising write, then settles.
 - **Ctrl+S did nothing in a scene.** Excalidraw swallows the `s` keydown before it
   reaches `app.js`'s bubble-phase window listener. Now handled on the capture
   phase inside `excalidraw-editor.js`, which also stops Excalidraw reading the

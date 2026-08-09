@@ -204,11 +204,13 @@
         teardown({ flush: true });
 
         let scene = null;
+        let onDiskJSON = null;
         try {
             const resp = await fetch(`/api/media/${encodePath(path)}`);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const text = await resp.text();
             scene = text.trim() ? JSON.parse(text) : null;
+            onDiskJSON = text;
         } catch (error) {
             reportError('load excalidraw scene', error);
             return;
@@ -237,7 +239,15 @@
         EXCAL.mountedFor = path;
         EXCAL.host = host;
         EXCAL.app = app;
-        EXCAL.lastSavedJSON = null;
+        // Baseline is what is actually on disk, not null. Excalidraw emits onChange
+        // on first render (loading normalises the scene — "boundElements": null
+        // becomes []), which would otherwise autosave a file nobody edited: every
+        // open would rewrite it, churning mtime and waking up any sync tool.
+        // Comparing against the bytes we just read makes that first save a no-op.
+        // Safe because the server writes the PUT body verbatim, so a file we wrote
+        // is byte-identical to the string compared in save(); a scene that is not
+        // yet canonical costs exactly one normalising write and then settles.
+        EXCAL.lastSavedJSON = onDiskJSON;
         EXCAL.root.render(EXCAL.lib.createElement(EXCAL.lib.Excalidraw, {
             initialData: {
                 elements: (scene && Array.isArray(scene.elements)) ? scene.elements : [],
