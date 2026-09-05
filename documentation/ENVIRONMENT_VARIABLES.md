@@ -116,7 +116,7 @@ AUTHENTICATION_PASSWORD=mysecretpassword
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `UPLOAD_MAX_IMAGE_MB` | integer | `10` | Maximum image upload size in MB |
+| `UPLOAD_MAX_IMAGE_MB` | integer | `10` | Maximum image upload size in MB (also applies to `.excalidraw` scenes) |
 | `UPLOAD_MAX_AUDIO_MB` | integer | `50` | Maximum audio upload size in MB |
 | `UPLOAD_MAX_VIDEO_MB` | integer | `100` | Maximum video upload size in MB |
 | `UPLOAD_MAX_PDF_MB` | integer | `20` | Maximum PDF upload size in MB |

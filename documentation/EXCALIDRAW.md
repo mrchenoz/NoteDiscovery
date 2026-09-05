@@ -20,6 +20,7 @@ The full Excalidraw component runs inside the app pane, so you get the complete 
 - Any file with the **`.excalidraw`** extension opens in the Excalidraw editor — including files you export from [excalidraw.com](https://excalidraw.com) and drop into your vault.
 - New sketches created from the **+ New** menu are named **`drawing-{timestamp}.excalidraw`**, mirroring the raster drawing convention.
 - Files are standard Excalidraw scene JSON (`{"type": "excalidraw", "version": 2, "elements": [...], ...}`) — plain text, diff-able, and portable.
+- **Size limit** — scenes share the image limit, `UPLOAD_MAX_IMAGE_MB` (default 10 MB), for both creation and saves. Shapes and text are tiny, but images placed in a scene are embedded in the file as base64, so a scene with several photos can hit it; raise the variable if it does (see [ENVIRONMENT_VARIABLES.md](ENVIRONMENT_VARIABLES.md)).
 
 ## How it loads
 
