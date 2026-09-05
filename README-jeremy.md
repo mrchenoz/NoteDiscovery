@@ -71,6 +71,14 @@ Xiaolai is 12 MB, against ~480 KB for every other Excalidraw font combined, so
 
 ## Fixed along the way (don't re-investigate)
 
+- **Theme switch did not reach an open scene.** `theme` was passed once at mount.
+  `ExcalidrawEditor.setTheme()` now re-renders the mounted element with the new
+  prop (React reconciles in place, scene and undo history survive), and
+  `applyTheme()` in `app.js` calls it next to the Mermaid/graph refreshes.
+- **`ExcalidrawEditor` was referenced unguarded in `app.js`.** If the editor
+  script ever failed to load, closing or switching any media would throw. The
+  navigation-path calls are now behind `typeof ExcalidrawEditor !== 'undefined'`.
+
 - **Opening a scene rewrote its file.** `mount()` set `lastSavedJSON = null`, and
   Excalidraw emits an `onChange` on first render (loading normalises the scene —
   `"boundElements": null` becomes `[]`), so the dedupe guard in `save()` could

@@ -12,7 +12,7 @@ The full Excalidraw component runs inside the app pane, so you get the complete 
 
 - **Tools** — Selection, rectangle, diamond, ellipse, arrow, line, freehand draw, text, image, eraser, frames, and the shape library.
 - **Undo / redo** — Handled by Excalidraw itself (**Ctrl+Z** / **Ctrl+Shift+Z**), independent of the note editor history.
-- **Theme** — The editor follows the app theme (light/dark) at the time it opens.
+- **Theme** — The editor follows the app theme (light/dark), including switches made while a scene is open.
 - **Saving** — Changes are saved automatically after you stop editing (same debounce as note autosave), and **Ctrl+S** (Cmd+S on Mac) saves immediately. Scenes are serialized with Excalidraw's own `serializeAsJSON`, so the files are interoperable with excalidraw.com and other Excalidraw tools.
 
 ## Files on disk
@@ -46,7 +46,7 @@ Xiaolai is skipped by default purely for size: it is 12 MB against ~480 KB for e
 
 ## Where the code lives
 
-The editor is self-contained in **`frontend/excalidraw-editor.js`** (loaded before `app.js`), which owns the lazy bundle load, the scene autosave loop, the scene keyboard shortcuts and the mount/unmount lifecycle. It exposes `window.ExcalidrawEditor` with `createNew(app)`, `mount(app)`, `save()`, `teardown({flush})` and `mountedFor()`; `app.js` only forwards to those, so it carries none of the editor's internals.
+The editor is self-contained in **`frontend/excalidraw-editor.js`** (loaded before `app.js`), which owns the lazy bundle load, the scene autosave loop, the scene keyboard shortcuts and the mount/unmount lifecycle. It exposes `window.ExcalidrawEditor` with `createNew(app)`, `mount(app)`, `save()`, `teardown({flush})`, `mountedFor()` and `setTheme(type)`; `app.js` only forwards to those, so it carries none of the editor's internals.
 
 ## API
 

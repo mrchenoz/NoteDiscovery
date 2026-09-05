@@ -1468,6 +1468,11 @@ function noteApp() {
                 if (this.showGraph) {
                     setTimeout(() => this.initGraph(), 300);
                 }
+
+                // Switch an open Excalidraw scene between its light and dark UI
+                if (typeof ExcalidrawEditor !== 'undefined') {
+                    ExcalidrawEditor.setTheme(this.getThemeType());
+                }
                 
                 // Update PWA theme-color meta tag to match current theme
                 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
@@ -3245,7 +3250,7 @@ function noteApp() {
                 this._drawingDisconnectResizeObserver();
             }
             // Flush + unmount any open Excalidraw scene (no-op when none is mounted)
-            ExcalidrawEditor.teardown({ flush: true });
+            if (typeof ExcalidrawEditor !== 'undefined') ExcalidrawEditor.teardown({ flush: true });
             this.currentMedia = '';
             this.currentMediaType = 'image';
         },
@@ -3257,7 +3262,7 @@ function noteApp() {
                 this._drawingCancelAutosave();
             }
             // Flush + unmount any open Excalidraw scene (no-op when none is mounted)
-            ExcalidrawEditor.teardown({ flush: true });
+            if (typeof ExcalidrawEditor !== 'undefined') ExcalidrawEditor.teardown({ flush: true });
             // Close mobile sidebar when a media file is selected, same as loadNote
             this.mobileSidebarOpen = false;
             this.showGraph = false; // Ensure graph is closed
@@ -3321,7 +3326,9 @@ function noteApp() {
             this._optimisticRemoveNote(mediaPath);
             this._rebuildTreeAfterMutation();
             // Discard (don't flush) a mounted Excalidraw scene for the file being deleted
-            if (ExcalidrawEditor.mountedFor() === mediaPath) ExcalidrawEditor.teardown({ flush: false });
+            if (typeof ExcalidrawEditor !== 'undefined' && ExcalidrawEditor.mountedFor() === mediaPath) {
+                ExcalidrawEditor.teardown({ flush: false });
+            }
             if (this.currentMedia === mediaPath) this.currentMedia = '';
             
             try {
