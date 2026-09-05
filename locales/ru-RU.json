@@ -82,7 +82,9 @@
     "just_now": "только что",
     "minutes_ago": "{{count}} мин. назад",
     "hours_ago": "{{count}} ч. назад",
-    "days_ago": "{{count}} дн. назад"
+    "days_ago": "{{count}} дн. назад",
+    "tasks_all_checked": "Отмечено {{changed}} из {{total}} задач",
+    "tasks_all_unchecked": "Снята отметка с {{changed}} из {{total}} задач"
   },
   "notes": {
     "confirm_delete": "Удалить «{{name}}»?",
@@ -148,7 +150,19 @@
     "show_qr": "Показать QR-код",
     "hide_qr": "Скрыть QR-код",
     "panel_title": "Опубликовано",
-    "no_shared": "Нет опубликованных заметок"
+    "no_shared": "Нет опубликованных заметок",
+    "link_name": "Имя ссылки",
+    "use_random_link": "Использовать случайную ссылку",
+    "custom_link_warning": "Любой, кто угадает имя, откроет заметку. Для конфиденциального используйте случайную ссылку.",
+    "slug_available": "Имя доступно",
+    "slug_taken": "Это имя уже занято другой ссылкой",
+    "slug_invalid_chars": "Используйте только буквы, цифры, дефисы и подчёркивания",
+    "slug_too_short": "Не менее {{min}} символов",
+    "slug_too_long": "Не более {{max}} символов",
+    "update_link": "Обновить ссылку",
+    "link_not_saved": "не сохранено",
+    "confirm_slug_change": "Вы уверены, что хотите изменить имя ссылки? Текущая ссылка сразу перестанет работать.",
+    "error_updating": "Не удалось обновить ссылку: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Поиск заметок...",

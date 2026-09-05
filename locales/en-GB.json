@@ -82,7 +82,9 @@
     "just_now": "just now",
     "minutes_ago": "{{count}}m ago",
     "hours_ago": "{{count}}h ago",
-    "days_ago": "{{count}}d ago"
+    "days_ago": "{{count}}d ago",
+    "tasks_all_checked": "{{changed}} of {{total}} tasks ticked",
+    "tasks_all_unchecked": "{{changed}} of {{total}} tasks unticked"
   },
   "notes": {
     "confirm_delete": "Delete \"{{name}}\"?",
@@ -148,7 +150,19 @@
     "show_qr": "Show QR Code",
     "hide_qr": "Hide QR Code",
     "panel_title": "Shared",
-    "no_shared": "No shared notes"
+    "no_shared": "No shared notes",
+    "link_name": "Link name",
+    "use_random_link": "Use a random link",
+    "custom_link_warning": "Anyone who guesses the name can open the note. Use a random link for anything sensitive.",
+    "slug_available": "Name is available",
+    "slug_taken": "Another link already uses this name",
+    "slug_invalid_chars": "Use letters, numbers, hyphens and underscores only",
+    "slug_too_short": "Use at least {{min}} characters",
+    "slug_too_long": "Use at most {{max}} characters",
+    "update_link": "Update Link",
+    "link_not_saved": "not saved yet",
+    "confirm_slug_change": "Change the link name? The current share link will stop working immediately.",
+    "error_updating": "Failed to update share link: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Type to search notes...",

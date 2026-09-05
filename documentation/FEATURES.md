@@ -10,12 +10,12 @@
 - **Undo/Redo** - Ctrl+Z / Ctrl+Y support
 - **Note templates** - Create notes from templates with dynamic placeholders
 - **Quick-create** - Set the **+ / New** button to skip the type chooser and create your most common item (note, folder, template, or drawing) in one click; **Shift+click** always shows the full chooser. Optionally pre-fill new note titles with a `yyyymmddHHMMSS` timestamp.
-- **Interactive task lists** - Click a `- [ ]` checkbox or its text in the preview to tick it; the change is written back to the note source and saved. Needs text after the brackets (`- [ ] task`, not `- [ ]`)
+- **Interactive task lists** - Click a `- [ ]` checkbox or its text in the preview to tick it; the change is written back to the note source and saved. **Ctrl+click** (Cmd on macOS) sets every task in the note to match, so one click clears or completes a whole checklist, and one Ctrl+Z undoes it. Needs text after the brackets (`- [ ] task`, not `- [ ]`)
 - **Syntax highlighting** for code blocks (50+ languages)
 - **Copy code blocks** - One-click copy button on hover
 - **LaTeX/Math rendering** - Beautiful mathematical equations with MathJax (see [MATHJAX.md](MATHJAX.md))
 - **Mermaid diagrams** - Create flowcharts, sequence diagrams, and more (see [MERMAID.md](MERMAID.md))
-- **Public Sharing** - Share notes via token-based URLs with optional QR code for mobile (see [SHARING.md](SHARING.md))
+- **Public Sharing** - Share notes via token-based URLs, with a custom link name if you want a readable one, and an optional QR code for mobile (see [SHARING.md](SHARING.md))
 
 ### Media Support
 - **Drawing editor** — In-app **`drawing-*.png`** sketches next to your notes ([overview](#drawing-editor)); full guide: **[DRAWING.md](DRAWING.md)**
@@ -208,6 +208,7 @@ items:                         # YAML list format
 
 ### Text Search
 - **Content-only** - Searches note contents (not file/folder names)
+- **Partial words** - Case-insensitive substring match, so `feat` finds `Features`
 - **Real-time results** - As you type
 - **Highlight matches** - See context in results
 - **In-note highlighting** - Search terms highlighted in open notes

@@ -82,7 +82,9 @@
     "just_now": "ravnokar",
     "minutes_ago": "pred {{count}} min",
     "hours_ago": "pred {{count}} h",
-    "days_ago": "pred {{count}} d"
+    "days_ago": "pred {{count}} d",
+    "tasks_all_checked": "Označenih {{changed}} od {{total}} opravil",
+    "tasks_all_unchecked": "Odznačenih {{changed}} od {{total}} opravil"
   },
   "notes": {
     "confirm_delete": "Izbrišem \"{{name}}\"?",
@@ -148,7 +150,19 @@
     "show_qr": "Prikaži QR kodo",
     "hide_qr": "Skrij QR kodo",
     "panel_title": "V skupni rabi",
-    "no_shared": "Ni deljenih zapisov"
+    "no_shared": "Ni deljenih zapisov",
+    "link_name": "Ime povezave",
+    "use_random_link": "Uporabi naključno povezavo",
+    "custom_link_warning": "Kdor ugane ime, lahko odpre zapis. Za občutljivo vsebino uporabi naključno povezavo.",
+    "slug_available": "Ime je na voljo",
+    "slug_taken": "To ime že uporablja druga povezava",
+    "slug_invalid_chars": "Uporabi samo črke, številke, vezaje in podčrtaje",
+    "slug_too_short": "Uporabi vsaj {{min}} znakov",
+    "slug_too_long": "Uporabi največ {{max}} znakov",
+    "update_link": "Posodobi povezavo",
+    "link_not_saved": "ni shranjeno",
+    "confirm_slug_change": "Ali ste prepričani, da želite spremeniti ime povezave? Trenutna povezava bo takoj prenehala delovati.",
+    "error_updating": "Napaka pri posodabljanju povezave: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Išči beležke...",

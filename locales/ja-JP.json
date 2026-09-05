@@ -82,7 +82,9 @@
     "just_now": "たった今",
     "minutes_ago": "{{count}}分前",
     "hours_ago": "{{count}}時間前",
-    "days_ago": "{{count}}日前"
+    "days_ago": "{{count}}日前",
+    "tasks_all_checked": "{{total}} 件中 {{changed}} 件のタスクをチェックしました",
+    "tasks_all_unchecked": "{{total}} 件中 {{changed}} 件のタスクのチェックを解除しました"
   },
   "notes": {
     "confirm_delete": "「{{name}}」を削除しますか？",
@@ -148,7 +150,19 @@
     "show_qr": "QRコードを表示",
     "hide_qr": "QRコードを非表示",
     "panel_title": "共有",
-    "no_shared": "共有中のノートはありません"
+    "no_shared": "共有中のノートはありません",
+    "link_name": "リンク名",
+    "use_random_link": "ランダムなリンクを使う",
+    "custom_link_warning": "名前を推測できれば誰でもノートを開けます。重要な内容にはランダムなリンクを使ってください。",
+    "slug_available": "この名前は使用できます",
+    "slug_taken": "この名前は別のリンクで使用中です",
+    "slug_invalid_chars": "使用できるのは英数字、ハイフン、アンダースコアのみです",
+    "slug_too_short": "{{min}} 文字以上で入力してください",
+    "slug_too_long": "{{max}} 文字以内で入力してください",
+    "update_link": "リンクを更新",
+    "link_not_saved": "未保存",
+    "confirm_slug_change": "リンク名を変更してもよろしいですか？現在の共有リンクはすぐに使えなくなります。",
+    "error_updating": "共有リンクの更新に失敗しました: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "ノートを検索...",

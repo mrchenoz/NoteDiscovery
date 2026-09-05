@@ -17,6 +17,13 @@ server:
   
   # Debug mode - shows detailed error messages (DISABLE in production!)
   debug: false
+
+  # Optional public origin for share links (scheme + host, no trailing slash).
+  # When set, the share dialog / QR / clipboard use this instead of the browser's
+  # origin — useful when you browse on LAN but want links like
+  # https://notes.example.com/share/... Leave empty for normal behavior.
+  # Override via the SHARE_PUBLIC_ORIGIN env var.
+  share_public_origin: ""
   
 storage:
   notes_dir: "./data"

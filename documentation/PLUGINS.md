@@ -14,8 +14,33 @@ Plugins are Python files that live in the `plugins/` directory. They use **event
 | `on_note_save` | Note is being saved | `note_path`, `content` | ✅ Yes (return transformed content, or None) |
 | `on_note_load` | Note is loaded from disk | `note_path`, `content` | ✅ Yes (return transformed content, or None) |
 | `on_note_delete` | Note is deleted | `note_path` | ❌ No |
-| `on_search` | Search is performed | `query`, `results` | ❌ No |
+| `on_search` | Search is performed | `query`, `results` | ✅ Yes (return a replacement result list, or None) |
 | `on_app_startup` | App starts up | None | ❌ No |
+
+Every hook that can modify follows the same rule: **return a new value to replace
+the one you were given, or return `None` to leave it alone.** Plugins run in
+filename order, each receiving what the previous one left behind. A plugin that
+raises is logged and skipped — the value keeps its last good state, so one broken
+plugin can't take down a request.
+
+Replacements must be the right type (`str` for content hooks, `list` for
+`on_search`). Anything else is logged and ignored rather than passed on.
+
+### Search result ordering
+
+Core search results are re-sorted by path before pagination, so that paging
+through them stays reproducible while notes are being edited. If your `on_search`
+returns its own list, that sort is skipped and your order is preserved — which
+also makes the order your responsibility. Return results in a stable order
+(due date, name, relevance score), not one that shifts between calls, or paginated
+clients can see duplicates.
+
+## Bundled and Contributed Plugins
+
+`note_stats` ships in `plugins/` and loads at startup. Community plugins live in
+`plugins/contrib/`, which the loader ignores — install one by copying it into
+`plugins/` and restarting. Each carries its own documentation in its docstring;
+see [plugins/contrib/README.md](../plugins/contrib/README.md).
 
 ## Creating a Plugin
 
@@ -35,7 +60,66 @@ Every plugin must have a `Plugin` class with:
 
 ### 3. Implement event hooks
 
-Add methods for the events you want to handle.
+Add methods for the events you want to handle. Method names are checked at load
+time: an `on_*` method that isn't a known hook gets a warning in the log rather
+than silently never running.
+
+## Plugin Context
+
+If your plugin defines `setup(ctx)`, it's called once at startup before any hook
+fires. Use it instead of trying to work out where things live yourself — the
+context always agrees with the running app, including `NOTES_DIR` overrides.
+
+| Field | What it is |
+|-------|-----------|
+| `ctx.notes_dir` | `Path` to the vault the app is actually serving |
+| `ctx.plugins_dir` | `Path` to the plugins directory |
+| `ctx.config` | The resolved app config dict |
+| `ctx.logger` | Logger named for your plugin, output goes to the server log |
+
+```python
+class Plugin:
+    def __init__(self):
+        self.name = "My Plugin"
+        self.version = "1.0.0"
+        self.enabled = True
+
+    def setup(self, ctx):
+        self.notes_dir = ctx.notes_dir
+        self.log = ctx.logger
+        self.log.info("ready, watching %s", self.notes_dir)
+```
+
+## Plugin Routes
+
+A plugin can serve its own HTTP endpoints by returning an `APIRouter` from
+`get_routes()`. Routes are mounted under `/api/plugins/<plugin_id>/` and inherit
+the app's authentication.
+
+```python
+from fastapi import APIRouter
+
+class Plugin:
+    # ... name / version / enabled as above ...
+
+    def get_routes(self) -> APIRouter:
+        router = APIRouter()
+
+        @router.get("/summary")
+        async def summary():
+            if not self.enabled:
+                return {"enabled": False}
+            return {"enabled": True, "notes": 42}
+
+        return router
+```
+
+That endpoint is then reachable at `/api/plugins/my_plugin/summary`. Routes are
+mounted at startup whether or not the plugin is enabled, so check `self.enabled`
+inside the handler if it should go quiet when toggled off.
+
+The bundled `note_stats` plugin uses both of these — see `plugins/note_stats.py`
+for a working example.
 
 ## Basic Example: Note Logger
 
@@ -63,9 +147,10 @@ class Plugin:
         """Log when a note is deleted"""
         print(f"🗑️  Note deleted: {note_path}")
     
-    def on_search(self, query: str, results: list):
+    def on_search(self, query: str, results: list) -> list | None:
         """Log search queries"""
         print(f"🔍 Search: '{query}' → {len(results)} results")
+        return None  # Don't touch the results, just observe
 ```
 
 ### How to see the logs

@@ -5,6 +5,7 @@ Handles creating, storing, and revoking share tokens for public note access.
 
 import json
 import logging
+import re
 import secrets
 import string
 from pathlib import Path
@@ -18,6 +19,75 @@ logger = logging.getLogger("uvicorn.error")
 
 # Thread lock for safe concurrent access
 _lock = threading.Lock()
+
+# A custom slug replaces the generated token, so it lands in a URL path segment and
+# has to survive being typed and read aloud: same alphabet as generate_token, no
+# separators. The minimum length keeps single letters out of the shared namespace.
+SLUG_MIN_LENGTH = 3
+SLUG_MAX_LENGTH = 64
+_SLUG_RE = re.compile(r'^[A-Za-z0-9_-]+$')
+
+
+class ShareSlugError(ValueError):
+    """
+    A requested slug cannot be used.
+
+    `reason` is a stable code ('too_short', 'too_long', 'invalid_chars', 'taken')
+    rather than prose, because the message the user sees is translated client-side.
+    """
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def validate_slug(slug: Any) -> str:
+    """
+    Check a user-supplied slug and return it in the form it should be stored.
+
+    Raises ShareSlugError for anything the URL or the tokens file cannot hold.
+    """
+    if not isinstance(slug, str):
+        raise ShareSlugError('invalid_chars')
+
+    candidate = slug.strip()
+    if len(candidate) < SLUG_MIN_LENGTH:
+        raise ShareSlugError('too_short')
+    if len(candidate) > SLUG_MAX_LENGTH:
+        raise ShareSlugError('too_long')
+    if not _SLUG_RE.match(candidate):
+        raise ShareSlugError('invalid_chars')
+    return candidate
+
+
+def _find_conflicting_token(
+    tokens: Dict[str, Dict[str, Any]], slug: str, note_path: Optional[str] = None
+) -> Optional[str]:
+    """
+    Return an existing token that would collide with slug, or None.
+
+    Matching ignores case: two links differing only in case read as the same name to
+    whoever types one. A token already pointing at note_path is not a conflict, so
+    re-submitting a note's current name is a no-op rather than an error.
+    """
+    target = slug.casefold()
+    for token, info in tokens.items():
+        if token.casefold() != target:
+            continue
+        if note_path is not None and info.get('path') == note_path:
+            continue
+        return token
+    return None
+
+
+def is_slug_available(data_dir: str, slug: str, note_path: Optional[str] = None) -> bool:
+    """
+    Report whether slug is free, optionally treating note_path's own token as free.
+
+    Advisory only: callers still have to handle ShareSlugError from the write, since
+    another request can claim the name in between.
+    """
+    return _find_conflicting_token(load_tokens(data_dir), slug, note_path) is None
 
 
 def _token_references_accessible_file(storage_dir: str, rel_path: Any) -> bool:
@@ -106,7 +176,36 @@ def save_tokens(data_dir: str, tokens: Dict[str, Dict[str, Any]]) -> bool:
         return False
 
 
-def create_share_token(data_dir: str, note_path: str, theme: str = "light") -> Optional[str]:
+def _rename_token_unsafe(
+    data_dir: str,
+    tokens: Dict[str, Dict[str, Any]],
+    note_path: str,
+    old_token: str,
+    new_slug: str,
+) -> Optional[str]:
+    """
+    Move a note's share entry to a new token, keeping theme and creation date.
+
+    The old URL stops working: a note has one token, so the rename is a swap rather
+    than an addition. Both halves happen in one dict and one write, so a reader can
+    never see the note shared twice or not at all.
+    Call only while holding _lock.
+    """
+    if _find_conflicting_token(tokens, new_slug, note_path) is not None:
+        raise ShareSlugError('taken')
+
+    tokens[new_slug] = tokens.pop(old_token)
+
+    if not save_tokens(data_dir, tokens):
+        _prune_inaccessible_unsafe(data_dir)
+        return None
+    _prune_inaccessible_unsafe(data_dir)
+    return new_slug
+
+
+def create_share_token(
+    data_dir: str, note_path: str, theme: str = "light", slug: Optional[str] = None
+) -> Optional[str]:
     """
     Create a share token for a note.
     If the note already has a token, returns the existing one.
@@ -115,25 +214,40 @@ def create_share_token(data_dir: str, note_path: str, theme: str = "light") -> O
         data_dir: Path to the data directory
         note_path: Path to the note (relative to notes_dir)
         theme: The theme to use when viewing the shared note
+        slug: Optional custom token. On an already-shared note a slug that differs
+            from the current token renames the link, which retires the old URL;
+            passing None leaves an existing link untouched.
     
     Returns:
         The share token, or None on error
+    
+    Raises:
+        ShareSlugError: the slug is malformed or already in use.
     """
+    desired = validate_slug(slug) if slug is not None else None
+
     with _lock:
         tokens = load_tokens(data_dir)
         
         # Check if note already has a token
         for token, info in tokens.items():
             if info.get('path') == note_path:
-                _prune_inaccessible_unsafe(data_dir)
-                return token
+                if desired is None or desired == token:
+                    _prune_inaccessible_unsafe(data_dir)
+                    return token
+                return _rename_token_unsafe(data_dir, tokens, note_path, token, desired)
 
-        # Generate new token
-        token = generate_token()
-        
-        # Ensure uniqueness (extremely unlikely collision, but check anyway)
-        while token in tokens:
+        if desired is not None:
+            if _find_conflicting_token(tokens, desired, note_path) is not None:
+                raise ShareSlugError('taken')
+            token = desired
+        else:
+            # Generate new token
             token = generate_token()
+            
+            # Ensure uniqueness (extremely unlikely collision, but check anyway)
+            while token in tokens:
+                token = generate_token()
         
         # Store token with theme
         tokens[token] = {

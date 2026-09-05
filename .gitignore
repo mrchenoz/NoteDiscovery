@@ -38,6 +38,7 @@ plugins/plugin_config.json
 # IDE
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
@@ -61,3 +62,6 @@ frontend/vendor/
 
 # Build dependencies for the Excalidraw bundle
 scripts/build_excalidraw/node_modules/
+
+# Local test suite, not shipped
+tests/

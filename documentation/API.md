@@ -362,6 +362,11 @@ GET /api/search?q={query}
 GET /api/search?q={query}&limit=10&offset=0
 ```
 
+Matches note contents by case-insensitive substring, so `q=feat` returns notes
+containing "Features". Each result carries the lines that matched. A query of
+fewer than 2 characters returns no results: it would match most of a vault and
+cannot use the search index.
+
 **Optional Pagination:**
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -406,7 +411,7 @@ Plugins can hook into various events in the application lifecycle.
 | `on_note_save` | Note is being saved | ✅ Yes (return transformed content, or None) |
 | `on_note_load` | Note is loaded | ✅ Yes (return transformed content, or None) |
 | `on_note_delete` | Note is deleted | ❌ No |
-| `on_search` | Search is performed | ❌ No |
+| `on_search` | Search is performed | ✅ Yes (return a replacement result list, or None) |
 | `on_app_startup` | App starts | ❌ No |
 
 See [PLUGINS.md](PLUGINS.md) for full documentation on creating plugins.
@@ -514,6 +519,45 @@ curl -O "http://localhost:8000/api/export/docs/API.md?theme=dracula"
 
 # Print preview (open in browser)
 # http://localhost:8000/api/export/docs/API.md?theme=light&download=false
+```
+
+### Archive Folder as ZIP
+```http
+GET /api/archive?folder={folder_path}
+```
+
+Downloads a folder and everything under it as a ZIP file. Omit `folder` to archive the whole vault.
+
+Unlike the HTML export above, this returns the **raw files** exactly as they are stored — notes, their `_attachments`, and anything else in the tree — so the archive can be unzipped into another vault or opened in any editor.
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `folder` | query (optional) | Folder relative to the vault root (e.g., `Projects/Q3`). Omitted or empty archives the entire vault |
+
+**Response:**
+- `200` — `application/zip`, named after the folder (or the app name for a whole-vault archive). Paths inside the archive are relative to the requested folder
+- `403` — the instance is running in demo mode, where archiving is disabled
+- `404` — folder does not exist, is not a directory, or contains no files
+- `413` — the files exceed `ARCHIVE_MAX_FOLDER_MB` (default 500). Archive a subfolder or raise the limit
+
+**Notes:**
+- Note content is not parsed, so media referenced from a *different* folder is not pulled in: archiving a folder gives you that folder
+- Anything whose name begins with a `.` is left out, at any depth — dot-directories are not descended into at all, and a `folder` containing a dot-component is refused. That covers tooling state (`.git`, `.obsidian`) and the app's own `.share-tokens.json`, so **the archive holds your notes and attachments, not app state or credentials**. Handing it to someone else cannot leak working share links
+- Symlinks are skipped, files and directories alike, so an archive can never contain anything from outside the vault
+- Already-compressed files (images, audio, video, PDFs) are stored rather than deflated, which is roughly six times faster for the same size
+- The response sets `Content-Encoding: identity` so the archive is not gzipped a second time in transit and keeps its `Content-Length`
+- Disabled entirely when `DEMO_MODE` is on: notes can be written on a demo, so an open archive route would let anyone upload attachments and then pull the whole vault repeatedly on the host's bandwidth
+
+**Rate Limit:** 10 requests/minute
+
+**Example:**
+```bash
+# One folder
+curl -OJ "http://localhost:8000/api/archive?folder=Projects/Q3"
+
+# The whole vault
+curl -OJ http://localhost:8000/api/archive
 ```
 
 ---
@@ -783,10 +827,19 @@ POST /api/share/{note_path}
 Content-Type: application/json
 
 {
-  "theme": "dracula"
+  "theme": "dracula",
+  "slug": "quarterly-report"
 }
 ```
-Creates a share token for the note. The `theme` is optional (defaults to "light").
+Creates a share token for the note. Both fields are optional: `theme` defaults to
+"light", and without `slug` the token is generated at random.
+
+A `slug` becomes the token itself. It must be 3-64 characters of letters, numbers,
+hyphens and underscores, and must not match another link's token (compared without
+regard to case). On a note that is already shared, a slug different from the current
+token **renames the link and the previous URL stops working** - a note has one token,
+so this is a move rather than a second link. Sending the note's current token, or no
+slug at all, leaves an existing link untouched.
 
 **Response:**
 ```json
@@ -795,6 +848,32 @@ Creates a share token for the note. The `theme` is optional (defaults to "light"
   "token": "LRFEo86oSVeJ3Gju",
   "url": "http://localhost:8000/share/LRFEo86oSVeJ3Gju",
   "note_path": "folder/note.md"
+}
+```
+
+**Slug errors:** `400` for a name that could never work, `409` for one already in use.
+The `reason` is a stable code (`too_short`, `too_long`, `invalid_chars`, `taken`) so
+clients can localise the message.
+```json
+{
+  "detail": { "reason": "taken", "message": "Share slug rejected: taken" }
+}
+```
+
+### Check Share Slug
+```http
+GET /api/share-slug?slug=quarterly-report&note_path=folder/note
+```
+Reports whether a custom slug can be used, for validating input before saving.
+`note_path` is optional; when given, that note's own current token is not treated as a
+conflict. Advisory only - the create call validates again, since another request can
+claim the same name in between.
+
+**Response:**
+```json
+{
+  "available": false,
+  "reason": "taken"
 }
 ```
 

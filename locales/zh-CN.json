@@ -82,7 +82,9 @@
     "just_now": "刚刚",
     "minutes_ago": "{{count}}分钟前",
     "hours_ago": "{{count}}小时前",
-    "days_ago": "{{count}}天前"
+    "days_ago": "{{count}}天前",
+    "tasks_all_checked": "已勾选 {{total}} 项任务中的 {{changed}} 项",
+    "tasks_all_unchecked": "已取消勾选 {{total}} 项任务中的 {{changed}} 项"
   },
   "notes": {
     "confirm_delete": "删除 \"{{name}}\"？",
@@ -148,7 +150,19 @@
     "show_qr": "显示二维码",
     "hide_qr": "隐藏二维码",
     "panel_title": "已分享",
-    "no_shared": "暂无已分享的笔记"
+    "no_shared": "暂无已分享的笔记",
+    "link_name": "链接名称",
+    "use_random_link": "使用随机链接",
+    "custom_link_warning": "任何猜到名称的人都能打开笔记。敏感内容请使用随机链接。",
+    "slug_available": "名称可用",
+    "slug_taken": "该名称已被其他链接使用",
+    "slug_invalid_chars": "只能使用字母、数字、连字符和下划线",
+    "slug_too_short": "至少需要 {{min}} 个字符",
+    "slug_too_long": "最多 {{max}} 个字符",
+    "update_link": "更新链接",
+    "link_not_saved": "尚未保存",
+    "confirm_slug_change": "您确定要更改链接名称吗？当前分享链接将立即失效。",
+    "error_updating": "更新分享链接失败：{{error}}"
   },
   "quick_switcher": {
     "placeholder": "搜索笔记...",

@@ -33,7 +33,6 @@ _PARALLEL_WORKERS = min(8, (os.cpu_count() or 4))
 # Search tokenization. Min length 2 keeps single-letter noise out without
 # losing common short queries like "go", "ai".
 _SEARCH_TOKEN_RE = re.compile(r"[A-Za-z0-9_\-]{2,}")
-_SEARCH_MIN_QUERY_LEN = 2
 
 WIKILINK_RE = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
 MDLINK_RE = re.compile(r'\[([^\]]+)\]\((?!https?://|mailto:|#|data:)([^\)]+)\)')
@@ -482,28 +481,38 @@ class NoteIndex:
     def get_search_candidates(self, query: str) -> Optional[Set[str]]:
         """Superset of paths whose content COULD contain `query`. Caller
         still runs the substring match per candidate for confirmation +
-        snippet extraction. Returns None when the query is too short or
-        tokenizes to nothing — caller should iterate every note instead."""
+        snippet extraction. Returns None when nothing in the query is
+        indexable — caller should iterate every note instead.
+
+        Single characters are skipped, not narrowed on: the index holds no term
+        shorter than two, so "Z" in "Plan Z details" was never recorded and
+        narrowing on it would rule out the very note that matches. A query of
+        only such runs ("b c") has to fall back to reading the vault."""
         if not self._search_built:
-            return None
-        if len(query) < _SEARCH_MIN_QUERY_LEN:
             return None
         tokens = [m.group(0).lower() for m in _SEARCH_TOKEN_RE.finditer(query)]
         if not tokens:
             return None
+
+        # The index stores whole words, but the caller confirms with a
+        # substring match, so "feat" has to reach the notes holding
+        # "features" — looking the token up as a key would drop them and the
+        # search would find nothing. Every term is tested against every token
+        # in a single pass instead. That costs a scan of the vocabulary, which
+        # stays well under the cost of the file reads the caller then does.
+        buckets: List[Set[str]] = [set() for _ in tokens]
         with self._lock:
-            candidate = self._search_terms.get(tokens[0])
-            if candidate is None:
-                return set()
-            result: Set[str] = set(candidate)
-            for tok in tokens[1:]:
-                bucket = self._search_terms.get(tok)
-                if bucket is None:
-                    return set()
-                result &= bucket
-                if not result:
-                    break
-            return result
+            for term, term_paths in self._search_terms.items():
+                for bucket, tok in zip(buckets, tokens):
+                    if tok in term:
+                        bucket |= term_paths
+
+        result = buckets[0]
+        for bucket in buckets[1:]:
+            result &= bucket
+            if not result:
+                break
+        return result
 
     def summary(self) -> Dict[str, Any]:
         """Aggregate counts + total size + last-modified note. Powers /api/stats

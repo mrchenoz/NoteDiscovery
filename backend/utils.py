@@ -240,6 +240,70 @@ def validate_path_security(notes_dir: str, path: Path) -> bool:
         return False
 
 
+def resolve_vault_folder(notes_dir: str, folder_path: str) -> Optional[Path]:
+    """Absolute path of a folder inside the vault, or None if it is not usable.
+
+    An empty ``folder_path`` is the vault root. Rejects anything that escapes the
+    vault, does not exist, is not a directory, or is a symlink — a link could
+    point anywhere, and following one would put files from outside the vault into
+    an export.
+
+    Dot-directories are refused as well, so asking for ``.git`` by name cannot do
+    what walking into it already cannot. That also covers ``..`` and ``.``.
+    """
+    if any(part.startswith('.') for part in Path(folder_path).parts):
+        return None
+
+    target = Path(notes_dir) if not folder_path else Path(notes_dir) / folder_path
+    if not validate_path_security(notes_dir, target):
+        return None
+    if target.is_symlink() or not target.is_dir():
+        return None
+    return target
+
+
+def collect_folder_files(notes_dir: str, folder: Path) -> Tuple[List[Tuple[Path, str]], int]:
+    """Every file under ``folder``, paired with its path relative to it, plus total bytes.
+
+    The vault on disk is the source of truth, so note content is never parsed:
+    whatever is in the folder comes out, attachments and unreferenced files
+    included. Nothing is added from outside, so a note linking to media in
+    another folder exports without it.
+
+    Skipped: symlinks, and dot-files and dot-directories, which is where editor
+    and tooling state lives (``.git``, ``.obsidian``) rather than anyone's notes.
+    """
+    collected: List[Tuple[Path, str]] = []
+    total_bytes = 0
+
+    for root, dirnames, filenames in os.walk(folder):
+        root_path = Path(root)
+        # Pruned in place so os.walk does not descend into them at all.
+        dirnames[:] = sorted(
+            d for d in dirnames
+            if not d.startswith('.') and not (root_path / d).is_symlink()
+        )
+
+        for filename in sorted(filenames):
+            if filename.startswith('.'):
+                continue
+            file_path = root_path / filename
+            if file_path.is_symlink() or not file_path.is_file():
+                continue
+            # Belt and braces: the walk starts inside the vault and skips links,
+            # so this should always hold. It is cheap, and the alternative to
+            # checking is shipping a file we cannot account for.
+            if not validate_path_security(notes_dir, file_path):
+                continue
+            try:
+                total_bytes += file_path.stat().st_size
+            except OSError:
+                continue
+            collected.append((file_path, str(file_path.relative_to(folder)).replace(os.sep, '/')))
+
+    return collected, total_bytes
+
+
 def ensure_directories(config: dict):
     """Create necessary directories if they don't exist"""
     dirs = [
@@ -555,7 +619,8 @@ def search_notes(notes_dir: str, query: str) -> List[Dict]:
 
     idx = note_index.get_index()
     if candidates is None:
-        # Query too short to tokenize — iterate every indexed note instead.
+        # Nothing in the query is indexable, "???" for instance — the index
+        # can't narrow it, so iterate every note.
         candidate_records = idx.all_note_records()
     else:
         candidate_records = [(p, idx.get_note_record(p)) for p in candidates]

@@ -93,6 +93,18 @@ When a note is saved, the plugin:
 ### Hooks Used
 - `on_note_save` - Logs stats to Docker after save
 
+### Endpoint
+
+The plugin serves its own route via `get_routes()`:
+
+```http
+GET /api/plugins/note_stats/calculate?content={markdown_content}
+```
+
+It returns `{"enabled": false, "stats": null}` while the plugin is toggled off.
+The web UI does not call it — the panel is computed in the browser — so it exists
+for API and MCP consumers.
+
 ---
 
 ## Viewing Statistics
@@ -151,7 +163,7 @@ WORDS_PER_MINUTE = 200  # Change to your average reading speed
 - Plugin logs stats to Docker when notes are saved
 - Uses `on_note_save` hook
 - Provides monitoring and tracking
-- No API endpoints needed
+- Serves `/api/plugins/note_stats/calculate` for API and MCP consumers
 
 ---
 
@@ -200,7 +212,7 @@ Find orphaned notes or track reference density.
 **Reading Time:** `words / 200 minutes`  
 **Links:** Regex match `[text](url)` markdown links + `[[wikilinks]]`  
 **Wikilinks:** Regex match `[[target]]` and `[[target|display]]` (Obsidian-style)  
-**Tasks:** Match `- [ ]` and `- [x]`  
+**Tasks:** Match `- [ ]` and `- [x]`, case-insensitive so `- [X]` counts too  
 **Code Blocks:** Match ` ```language ` ` fences  
 **Headings:** Match `#`, `##`, `###` at line start  
 

@@ -51,7 +51,6 @@
     "no_notes_yet": "Noch keine Notizen oder Ordner.",
     "create_first": "Erstelle deine erste Notiz oder Ordner!",
     "loading_notes": "Notizen werden geladen…",
-    "drop_to_root": "Hier ablegen für Stammverzeichnis",
     "no_favorites": "Noch keine Favoriten",
     "no_results": "Keine Ergebnisse gefunden",
     "expand_all": "Alle Ordner aufklappen",
@@ -83,7 +82,9 @@
     "just_now": "gerade eben",
     "minutes_ago": "vor {{count}}m",
     "hours_ago": "vor {{count}}h",
-    "days_ago": "vor {{count}}T"
+    "days_ago": "vor {{count}}T",
+    "tasks_all_checked": "{{changed}} von {{total}} Aufgaben als erledigt markiert",
+    "tasks_all_unchecked": "{{changed}} von {{total}} Aufgaben als offen markiert"
   },
   "notes": {
     "confirm_delete": "\"{{name}}\" löschen?",
@@ -149,7 +150,19 @@
     "show_qr": "QR-Code anzeigen",
     "hide_qr": "QR-Code ausblenden",
     "panel_title": "Geteilt",
-    "no_shared": "Keine geteilten Notizen"
+    "no_shared": "Keine geteilten Notizen",
+    "link_name": "Linkname",
+    "use_random_link": "Zufälligen Link verwenden",
+    "custom_link_warning": "Wer den Namen errät, kann die Notiz öffnen. Für Vertrauliches einen zufälligen Link verwenden.",
+    "slug_available": "Name ist verfügbar",
+    "slug_taken": "Ein anderer Link verwendet diesen Namen bereits",
+    "slug_invalid_chars": "Nur Buchstaben, Zahlen, Bindestriche und Unterstriche verwenden",
+    "slug_too_short": "Mindestens {{min}} Zeichen verwenden",
+    "slug_too_long": "Höchstens {{max}} Zeichen verwenden",
+    "update_link": "Link aktualisieren",
+    "link_not_saved": "noch nicht gespeichert",
+    "confirm_slug_change": "Möchten Sie den Linknamen ändern? Der aktuelle Freigabelink funktioniert dann sofort nicht mehr.",
+    "error_updating": "Fehler beim Aktualisieren des Freigabelinks: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Notizen suchen...",

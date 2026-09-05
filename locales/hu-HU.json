@@ -51,7 +51,6 @@
     "no_notes_yet": "Még nincsenek jegyzetek vagy mappák.",
     "create_first": "Hozd létre az első jegyzeted vagy mappád!",
     "loading_notes": "Jegyzetek betöltése…",
-    "drop_to_root": "Húzd ide a gyökérhez",
     "no_favorites": "Még nincsenek kedvencek",
     "no_results": "Nincs találat",
     "expand_all": "Mappák kibontása",
@@ -83,7 +82,9 @@
     "just_now": "éppen most",
     "minutes_ago": "{{count}} perce",
     "hours_ago": "{{count}} órája",
-    "days_ago": "{{count}} napja"
+    "days_ago": "{{count}} napja",
+    "tasks_all_checked": "{{total}} feladatból {{changed}} bejelölve",
+    "tasks_all_unchecked": "{{total}} feladatból {{changed}} jelölése törölve"
   },
   "notes": {
     "confirm_delete": "Biztos törlöd a következőt: \"{{name}}\"?",
@@ -149,7 +150,19 @@
     "show_qr": "QR-Kód Megjelenítése",
     "hide_qr": "QR-Kód Elrejtése",
     "panel_title": "Megosztott",
-    "no_shared": "Nincs megosztott jegyzet"
+    "no_shared": "Nincs megosztott jegyzet",
+    "link_name": "Link neve",
+    "use_random_link": "Véletlenszerű link használata",
+    "custom_link_warning": "Aki kitalálja a nevet, megnyithatja a jegyzetet. Érzékeny tartalomhoz használj véletlenszerű linket.",
+    "slug_available": "A név szabad",
+    "slug_taken": "Ezt a nevet már egy másik link használja",
+    "slug_invalid_chars": "Csak betűk, számok, kötőjelek és alulvonások használhatók",
+    "slug_too_short": "Legalább {{min}} karakter kell",
+    "slug_too_long": "Legfeljebb {{max}} karakter lehet",
+    "update_link": "Link Frissítése",
+    "link_not_saved": "nincs mentve",
+    "confirm_slug_change": "Biztos megváltoztatod a link nevét? A jelenlegi megosztási link azonnal érvénytelen lesz.",
+    "error_updating": "Nem sikerült frissíteni a megosztási linket: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Írj a jegyzetek kereséséhez...",

@@ -10,9 +10,30 @@ NoteDiscovery supports environment variables to override configuration settings,
 |----------|------|---------|-------------|
 | `PORT` | integer | `8000` | HTTP port for the application (Docker, run.py) |
 | `APP_NAME` | string | `NoteDiscovery` | Name shown in the UI, the login page, the browser title and the API docs. Overrides `app.name` in `config.yaml`. |
+| `SHARE_PUBLIC_ORIGIN` | string | _(empty)_ | Optional. When set, share links in the dialog / QR / clipboard (and API `url` fields) use this origin instead of the browser or request host. Example: `https://notes.example.com`. Overrides `server.share_public_origin` in `config.yaml`. |
 | `FORWARDED_ALLOW_IPS` | string | `127.0.0.1` | Reverse proxy deployments only. Set to `*` so `X-Forwarded-Proto` and `X-Forwarded-For` are trusted and the app sees the real scheme and client IP. Read by uvicorn, not by NoteDiscovery. |
 
 > **Note**: Advanced server settings (CORS origins, debug mode) are configured via `config.yaml` only, not via environment variables. See [config.yaml](#advanced-server-configuration) for details.
+
+#### Example: Public share links while browsing on LAN
+
+```bash
+# Docker
+docker run -e SHARE_PUBLIC_ORIGIN=https://notes.example.com ...
+
+# Docker Compose
+environment:
+  - SHARE_PUBLIC_ORIGIN=https://notes.example.com
+```
+
+Equivalent in `config.yaml`:
+
+```yaml
+server:
+  share_public_origin: "https://notes.example.com"
+```
+
+Leave unset (or empty) to keep the current behavior: share URLs follow the host you are browsing on.
 
 #### Example: Naming your instance
 
@@ -111,6 +132,16 @@ docker run -e UPLOAD_MAX_VIDEO_MB=500 ...
 environment:
   - UPLOAD_MAX_VIDEO_MB=500
 ```
+
+### Archive Limits
+
+Applies to folder and whole-vault ZIP downloads (`GET /api/archive`).
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ARCHIVE_MAX_FOLDER_MB` | integer | `500` | Largest folder (or whole vault) that will be zipped, measured on the files going in. Requests over the limit are refused with a `413` before any work starts |
+
+Zipping runs at roughly 100 MB/s and needs that much free temp disk while the archive is built, so raise this only if you are happy to wait for a bigger vault.
 
 ### User Interface
 

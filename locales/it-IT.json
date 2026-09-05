@@ -82,7 +82,9 @@
     "just_now": "adesso",
     "minutes_ago": "{{count}}m fa",
     "hours_ago": "{{count}}h fa",
-    "days_ago": "{{count}}g fa"
+    "days_ago": "{{count}}g fa",
+    "tasks_all_checked": "{{changed}} di {{total}} attività selezionate",
+    "tasks_all_unchecked": "{{changed}} di {{total}} attività deselezionate"
   },
   "notes": {
     "confirm_delete": "Eliminare \"{{name}}\"?",
@@ -148,7 +150,19 @@
     "show_qr": "Mostra codice QR",
     "hide_qr": "Nascondi codice QR",
     "panel_title": "Condivise",
-    "no_shared": "Nessuna nota condivisa"
+    "no_shared": "Nessuna nota condivisa",
+    "link_name": "Nome del link",
+    "use_random_link": "Usa un link casuale",
+    "custom_link_warning": "Chi indovina il nome può aprire la nota. Usa un link casuale per contenuti riservati.",
+    "slug_available": "Nome disponibile",
+    "slug_taken": "Un altro link usa già questo nome",
+    "slug_invalid_chars": "Usa solo lettere, numeri, trattini e trattini bassi",
+    "slug_too_short": "Usa almeno {{min}} caratteri",
+    "slug_too_long": "Usa al massimo {{max}} caratteri",
+    "update_link": "Aggiorna link",
+    "link_not_saved": "non salvato",
+    "confirm_slug_change": "Sei sicuro di voler cambiare il nome del link? Il link attuale smetterà subito di funzionare.",
+    "error_updating": "Impossibile aggiornare il link: {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Cerca note...",

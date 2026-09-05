@@ -144,11 +144,26 @@ Themes should:
 
 ## 🔌 Contributing Plugins
 
-Plugins should:
-- Follow the existing plugin structure (see `plugins/` directory)
-- Include documentation in `documentation/PLUGINS.md`
-- Be optional and not break core functionality if disabled
-- Follow the plugin configuration format
+Contributed plugins go in `plugins/contrib/`. That folder ships with the project
+but is never loaded — users install one by copying it into `plugins/`. Every
+deployment stays lean by default, and a plugin can't break someone who never
+asked for it.
+
+A plugin there should:
+- **Be one self-contained file** - no packages, no companion modules
+- **Add no dependencies** beyond `requirements.txt`
+- **Need no core changes** - if the existing hooks can't support it, open an issue first
+- **Document itself** in a module docstring - what it does, how it's triggered, how to install it, and anything known to be rough
+- **Fail quietly** - a plugin that raises is logged and skipped, so don't leave the app depending on it
+
+Please don't add it to `documentation/PLUGINS.md`. That file covers the plugin
+*system*; the contrib folder is its own index, which is what keeps two plugin
+PRs from conflicting. See [plugins/contrib/README.md](plugins/contrib/README.md)
+for the docstring format, and `documentation/PLUGINS.md` for the hooks, plugin
+context, and routes you can build on.
+
+Plugins are promoted into `plugins/` and shipped enabled only at the maintainers'
+discretion.
 
 ## 🌍 Contributing Translations
 

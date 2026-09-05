@@ -51,7 +51,6 @@
     "no_notes_yet": "Pas encore de notes ni de dossiers.",
     "create_first": "Créez votre première note ou dossier !",
     "loading_notes": "Chargement de vos notes…",
-    "drop_to_root": "Déposer ici pour la racine",
     "no_favorites": "Pas encore de favoris",
     "no_results": "Aucun résultat trouvé",
     "expand_all": "Développer tous les dossiers",
@@ -83,7 +82,9 @@
     "just_now": "à l'instant",
     "minutes_ago": "il y a {{count}}m",
     "hours_ago": "il y a {{count}}h",
-    "days_ago": "il y a {{count}}j"
+    "days_ago": "il y a {{count}}j",
+    "tasks_all_checked": "{{changed}} tâches sur {{total}} cochées",
+    "tasks_all_unchecked": "{{changed}} tâches sur {{total}} décochées"
   },
   "notes": {
     "confirm_delete": "Supprimer \"{{name}}\" ?",
@@ -149,7 +150,19 @@
     "show_qr": "Afficher le code QR",
     "hide_qr": "Masquer le code QR",
     "panel_title": "Partagées",
-    "no_shared": "Aucune note partagée"
+    "no_shared": "Aucune note partagée",
+    "link_name": "Nom du lien",
+    "use_random_link": "Utiliser un lien aléatoire",
+    "custom_link_warning": "Quiconque devine le nom peut ouvrir la note. Utilisez un lien aléatoire pour tout contenu sensible.",
+    "slug_available": "Ce nom est disponible",
+    "slug_taken": "Un autre lien utilise déjà ce nom",
+    "slug_invalid_chars": "Utilisez uniquement des lettres, des chiffres, des tirets et des tirets bas",
+    "slug_too_short": "Utilisez au moins {{min}} caractères",
+    "slug_too_long": "Utilisez au maximum {{max}} caractères",
+    "update_link": "Mettre à jour le lien",
+    "link_not_saved": "non enregistré",
+    "confirm_slug_change": "Voulez-vous changer le nom du lien ? Le lien actuel cessera immédiatement de fonctionner.",
+    "error_updating": "Échec de la mise à jour du lien : {{error}}"
   },
   "quick_switcher": {
     "placeholder": "Rechercher des notes...",

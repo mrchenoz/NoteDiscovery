@@ -10,16 +10,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.background import BackgroundTask
 import os
 import re
 import mimetypes
+import tempfile
+import time
 import yaml
 import json
 import logging
+import zipfile
 from pathlib import Path
 from typing import List, Optional
 from html import escape as html_escape
-from urllib.parse import quote_plus, parse_qs
+from urllib.parse import quote_plus, parse_qs, urlparse
 import hashlib
 import aiofiles
 from datetime import datetime
@@ -48,6 +52,8 @@ from .utils import (
     save_uploaded_image,
     _scan_cache_invalidate,
     validate_path_security,
+    resolve_vault_folder,
+    collect_folder_files,
     get_all_tags,
     get_notes_by_tag,
     get_templates,
@@ -68,6 +74,9 @@ from .share import (
     delete_token_for_note,
     update_token_path,
     get_all_shared_paths,
+    is_slug_available,
+    validate_slug,
+    ShareSlugError,
 )
 from .export import generate_export_html, embed_images_as_base64, convert_wikilinks_to_html, strip_frontmatter
 
@@ -274,6 +283,19 @@ UPLOAD_MAX_VIDEO_MB = int(os.getenv('UPLOAD_MAX_VIDEO_MB', '100'))
 UPLOAD_MAX_PDF_MB = int(os.getenv('UPLOAD_MAX_PDF_MB', '20'))
 UPLOAD_MAX_NOTE_MB = int(os.getenv('UPLOAD_MAX_NOTE_MB', '10'))
 
+# Ceiling on a folder/vault zip archive, measured on the files going in. Checked
+# before any zipping starts so an oversized request fails at once instead of
+# after spending the CPU. Raise it if your vault is bigger than this and you are
+# happy to wait: the work is roughly 100 MB/s, and the archive needs that much
+# free temp disk while it is being built.
+ARCHIVE_MAX_FOLDER_MB = int(os.getenv('ARCHIVE_MAX_FOLDER_MB', '500'))
+
+# Shortest query the search endpoint will act on. A single character matches
+# most of a vault and cannot use the search index, so answering it means reading
+# every note for a result nobody wants. Mirrored by SEARCH_MIN_QUERY_LENGTH in
+# frontend/app.js, which stops sending those queries in the first place.
+SEARCH_MIN_QUERY_LENGTH = 2
+
 # Autosave debounce in milliseconds (applies to note typing AND drawing PNG autosave).
 try:
     _autosave_raw = int(os.getenv(
@@ -311,6 +333,36 @@ if not get_theme_css(str(THEMES_DIR), DEFAULT_THEME):
 else:
     logger.info("Default theme: %s (from %s)", DEFAULT_THEME, _theme_source)
 
+# Optional public origin for share links. When set, create/status share URLs use
+# this instead of request.base_url (and the frontend prefers it over
+# window.location.origin). Empty = current behavior.
+# Priority: SHARE_PUBLIC_ORIGIN env var > server.share_public_origin in config.yaml.
+def _normalize_share_public_origin(raw: str) -> str:
+    """Return scheme://host[:port] or '' if unset/invalid."""
+    value = (raw or '').strip()
+    if not value:
+        return ''
+    parsed = urlparse(value)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return ''
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+_share_origin_source = "config.yaml"
+if os.environ.get('SHARE_PUBLIC_ORIGIN', '').strip():
+    _share_origin_raw = os.environ['SHARE_PUBLIC_ORIGIN']
+    _share_origin_source = "SHARE_PUBLIC_ORIGIN env var"
+else:
+    _share_origin_raw = config.get('server', {}).get('share_public_origin') or ''
+SHARE_PUBLIC_ORIGIN = _normalize_share_public_origin(_share_origin_raw)
+if (_share_origin_raw or '').strip() and not SHARE_PUBLIC_ORIGIN:
+    logger.warning(
+        "Configured share_public_origin %r (from %s) is not a valid http(s) URL; ignoring",
+        _share_origin_raw.strip(),
+        _share_origin_source,
+    )
+elif SHARE_PUBLIC_ORIGIN:
+    logger.info("Share public origin: %s (from %s)", SHARE_PUBLIC_ORIGIN, _share_origin_source)
+
 if DEMO_MODE:
     # Enable rate limiting for demo deployments
     limiter = Limiter(key_func=get_remote_address, default_limits=["200/hour"])
@@ -331,10 +383,14 @@ else:
 ensure_directories(config)
 
 # Initialize plugin manager
-plugin_manager = PluginManager(config['storage']['plugins_dir'])
+plugin_manager = PluginManager(
+    config['storage']['plugins_dir'],
+    notes_dir=config['storage']['notes_dir'],
+    config=config,
+)
 
 # Run app startup hooks
-plugin_manager.run_hook('on_app_startup')
+plugin_manager.dispatch('on_app_startup')
 
 
 mimetypes.add_type("text/javascript", ".js")
@@ -662,8 +718,18 @@ async def login(request: Request, password: str = Form(...)):
 
 
 @app.get("/logout", include_in_schema=False)
+async def logout_get_not_allowed():
+    """Reject GET so the SPA catch-all cannot serve the app here, and so
+    <img src="/logout"> cannot clear the session (use POST instead)."""
+    return Response(status_code=405, headers={"Allow": "POST"})
+
+
+@app.post("/logout", include_in_schema=False)
 async def logout(request: Request):
-    """Log out the current user"""
+    """Log out the current user.
+
+    POST-only so a third-party page cannot force logout via a GET (e.g. <img src>).
+    """
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
@@ -699,6 +765,8 @@ async def get_config():
         "autosaveDelayMs": AUTOSAVE_DELAY_MS,  # Debounce for note/drawing autosave
         "defaultTheme": DEFAULT_THEME,  # Used when the browser has no saved preference
         "uploadMaxNoteMb": UPLOAD_MAX_NOTE_MB,  # Client-side size cap for .md drops
+        # Empty string when unset; frontend falls back to window.location.origin
+        "sharePublicOrigin": SHARE_PUBLIC_ORIGIN,
         "authentication": {
             "enabled": config.get('authentication', {}).get('enabled', False)
         }
@@ -1082,7 +1150,7 @@ async def move_note_endpoint(request: Request, data: dict):
         update_token_path(config['storage']['notes_dir'], old_path, new_path)
         
         # Run plugin hooks
-        plugin_manager.run_hook('on_note_save', note_path=new_path, content='')
+        plugin_manager.dispatch('on_note_save', note_path=new_path, content='')
         
         return {
             "success": True,
@@ -1315,16 +1383,14 @@ async def create_note_from_template(request: Request, data: dict):
         final_content = apply_template_placeholders(template_content, note_path)
         
         # Run on_note_create hook BEFORE saving (allows plugins to modify initial content)
-        final_content = plugin_manager.run_hook_with_return(
+        final_content = plugin_manager.dispatch(
             'on_note_create',
             note_path=note_path,
             initial_content=final_content
         )
         
         # Run on_note_save hook (can transform content, e.g., encrypt)
-        transformed_content = plugin_manager.run_hook('on_note_save', note_path=note_path, content=final_content)
-        if transformed_content is None:
-            transformed_content = final_content
+        transformed_content = plugin_manager.dispatch('on_note_save', note_path=note_path, content=final_content)
         
         # Save the note with the (potentially modified/transformed) content
         success = save_note(config['storage']['notes_dir'], note_path, transformed_content)
@@ -1401,9 +1467,7 @@ async def get_note(note_path: str, include_backlinks: bool = True):
             raise HTTPException(status_code=404, detail="Note not found")
 
         # Run on_note_load hook (can transform content, e.g., decrypt)
-        transformed_content = plugin_manager.run_hook('on_note_load', note_path=note_path, content=content)
-        if transformed_content is not None:
-            content = transformed_content
+        content = plugin_manager.dispatch('on_note_load', note_path=note_path, content=content)
 
         response = {
             "path": note_path,
@@ -1437,16 +1501,14 @@ async def create_or_update_note(request: Request, note_path: str, content: dict)
         
         # If creating a new note, run on_note_create hook to allow plugins to modify initial content
         if is_new_note:
-            note_content = plugin_manager.run_hook_with_return(
+            note_content = plugin_manager.dispatch(
                 'on_note_create',
                 note_path=note_path,
                 initial_content=note_content
             )
         
         # Run on_note_save hook (can transform content, e.g., encrypt)
-        transformed_content = plugin_manager.run_hook('on_note_save', note_path=note_path, content=note_content)
-        if transformed_content is None:
-            transformed_content = note_content
+        transformed_content = plugin_manager.dispatch('on_note_save', note_path=note_path, content=note_content)
         
         success = save_note(config['storage']['notes_dir'], note_path, transformed_content)
         
@@ -1501,9 +1563,7 @@ async def append_to_note(request: Request, note_path: str, data: dict):
         new_content = existing_content + content_to_append
         
         # Run on_note_save hook
-        transformed_content = plugin_manager.run_hook('on_note_save', note_path=note_path, content=new_content)
-        if transformed_content is None:
-            transformed_content = new_content
+        transformed_content = plugin_manager.dispatch('on_note_save', note_path=note_path, content=new_content)
         
         success = save_note(config['storage']['notes_dir'], note_path, transformed_content)
         
@@ -1535,7 +1595,7 @@ async def remove_note(request: Request, note_path: str):
         delete_token_for_note(config['storage']['notes_dir'], note_path)
         
         # Run plugin hooks
-        plugin_manager.run_hook('on_note_delete', note_path=note_path)
+        plugin_manager.dispatch('on_note_delete', note_path=note_path)
         
         return {
             "success": True,
@@ -1545,6 +1605,125 @@ async def remove_note(request: Request, note_path: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=safe_error_message(e, "Failed to delete note"))
+
+
+# Shared by the archive route and the startup sweep that clears its leftovers.
+ARCHIVE_TEMP_PREFIX = 'notediscovery-archive-'
+
+# Already-compressed formats. Deflating these again costs six times the CPU and
+# saves nothing: on a 110 MB test vault, storing them instead took the zip from
+# 6.7s to 1.1s and grew the archive by 0.1 MB.
+STORED_ARCHIVE_EXTENSIONS = {
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif',
+    '.mp3', '.m4a', '.ogg', '.oga', '.opus', '.flac',
+    '.mp4', '.webm', '.mov', '.mkv', '.avi',
+    '.pdf', '.zip', '.gz', '.bz2', '.xz', '.7z', '.rar',
+}
+
+
+# Kept off the /export/ prefix on purpose: /export/{note_path} uses a path
+# converter that swallows everything after it, so any sibling route there is only
+# reachable by being declared first and can be broken by reordering.
+#
+# Deliberately sync rather than async. Zipping blocks, so on the event loop it
+# would freeze every other request for the duration; as a plain def, FastAPI runs
+# it in a worker thread and the app stays responsive while it works.
+@api_router.get("/archive", tags=["Export"])
+@limiter.limit("10/minute")
+def download_folder_archive(request: Request, folder: str = ""):
+    """
+    Download a folder and everything under it as a zip file.
+
+    The vault on disk is the source of truth: notes, their `_attachments` and any
+    other files come out exactly as they are stored, so the archive can be
+    unzipped into another vault or read in any editor. Note content is not
+    parsed, which means media a note links to from a *different* folder is not
+    pulled in — exporting a folder gives you that folder.
+
+    Symlinks, dot-files and dot-directories are skipped. Disabled in demo mode.
+
+    Query Parameters:
+        folder: Folder to archive, relative to the vault root. Omit it (or pass an
+                empty value) to archive the whole vault.
+
+    Returns:
+        A zip file, with paths inside it relative to the requested folder.
+    """
+    # Notes can be written in demo mode, so without this anyone could upload
+    # attachments and then ask for a zip of the whole vault ten times a minute, on
+    # the demo's bandwidth. Nothing about trying the app out needs its content
+    # downloaded. This also puts the rate limit above out of reach, since limits
+    # only apply in demo mode; it stays for the day this guard is lifted.
+    if DEMO_MODE:
+        raise HTTPException(status_code=403, detail="Archiving is disabled in demo mode")
+
+    notes_dir = config['storage']['notes_dir']
+    folder_path = (folder or '').strip().strip('/')
+
+    folder_dir = resolve_vault_folder(notes_dir, folder_path)
+    if folder_dir is None:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    files, total_bytes = collect_folder_files(notes_dir, folder_dir)
+    if not files:
+        raise HTTPException(status_code=404, detail="Folder has no files to archive")
+
+    if total_bytes > ARCHIVE_MAX_FOLDER_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Folder is {total_bytes / (1024 * 1024):.0f} MB, which is over the "
+                f"{ARCHIVE_MAX_FOLDER_MB} MB limit. Archive a subfolder instead, "
+                f"or raise ARCHIVE_MAX_FOLDER_MB."
+            ),
+        )
+
+    # Built on disk, not in memory: a vault-sized archive has no business in RAM,
+    # and a real file lets FileResponse send a Content-Length so browsers can show
+    # download progress.
+    handle = tempfile.NamedTemporaryFile(prefix=ARCHIVE_TEMP_PREFIX, suffix='.zip', delete=False)
+    handle.close()
+    archive_path = Path(handle.name)
+
+    try:
+        with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for file_path, arcname in files:
+                try:
+                    archive.write(file_path, arcname, compress_type=(
+                        zipfile.ZIP_STORED if file_path.suffix.lower() in STORED_ARCHIVE_EXTENSIONS
+                        else zipfile.ZIP_DEFLATED
+                    ))
+                except OSError:
+                    # The response only carries a generic message, so name the file
+                    # here: one unreadable file fails the whole archive and the owner
+                    # needs to know which one to fix.
+                    logger.error("Folder archive aborted, cannot read %s", file_path)
+                    raise
+    except Exception as e:
+        archive_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=safe_error_message(e, "Failed to archive folder"))
+
+    logger.info(
+        "Folder archive: %s | %d files | %.1f MB in | %.1f MB out",
+        folder_path or '(vault root)', len(files),
+        total_bytes / (1024 * 1024), archive_path.stat().st_size / (1024 * 1024),
+    )
+
+    # The vault root has no folder name to borrow, so it takes the app's. Also
+    # catches ".", which Path reduces to no name at all.
+    label = Path(folder_path).name or config['app']['name']
+    return FileResponse(
+        archive_path,
+        media_type='application/zip',
+        filename=f'{label}.zip',
+        # Declaring an encoding is how Starlette's GZipMiddleware is told to leave a
+        # response alone. Without it every download is gzipped again, which on a zip
+        # costs CPU to make the payload slightly larger, and drops the Content-Length
+        # the browser needs to show download progress.
+        headers={'Content-Encoding': 'identity'},
+        # Deleted once the response has been sent, however that turns out.
+        background=BackgroundTask(archive_path.unlink, missing_ok=True),
+    )
 
 
 @api_router.get("/export/{note_path:path}", tags=["Export"])
@@ -1572,9 +1751,7 @@ async def export_note_to_html(request: Request, note_path: str, theme: Optional[
             raise HTTPException(status_code=404, detail="Note not found")
         
         # Run on_note_load hook (can transform content, e.g., decrypt)
-        transformed_content = plugin_manager.run_hook('on_note_load', note_path=note_path, content=content)
-        if transformed_content is not None:
-            content = transformed_content
+        content = plugin_manager.dispatch('on_note_load', note_path=note_path, content=content)
         
         # Strip YAML frontmatter (like the preview does)
         content = strip_frontmatter(content)
@@ -1668,17 +1845,28 @@ async def search(
                 "message": "No search term provided"
             }
 
-        results = search_notes(config['storage']['notes_dir'], q)
+        # Below the floor, skip the vault read but still run the hooks, so a
+        # plugin answering a short trigger of its own keeps working.
+        if len(q.strip()) < SEARCH_MIN_QUERY_LENGTH:
+            results = []
+        else:
+            results = search_notes(config['storage']['notes_dir'], q)
 
-        # Run plugin hooks
-        plugin_manager.run_hook('on_search', query=q, results=results)
+        # Run plugin hooks — a plugin may return a replacement result set
+        hooked = plugin_manager.dispatch('on_search', query=q, results=results)
+        plugin_replaced = hooked is not results
+        results = hooked
 
-        # Apply pagination with consistent sorting by path
+        # Core results are sorted by path so pagination is reproducible between
+        # requests (search_notes emits them in mtime order, which shifts as notes
+        # are edited). A plugin that returns its own list has chosen an order —
+        # relevance, due date — so keep it, and with it the responsibility for
+        # making that order stable across calls.
         paginated = paginate(
             items=results,
             limit=limit,
             offset=offset,
-            sort_key=lambda x: x.get('path', '').lower()
+            sort_key=None if plugin_replaced else (lambda x: x.get('path', '').lower())
         )
         
         response = {
@@ -1716,20 +1904,6 @@ async def get_graph():
 async def list_plugins():
     """List all available plugins"""
     return {"plugins": plugin_manager.list_plugins()}
-
-
-@api_router.get("/plugins/note_stats/calculate", tags=["Plugins"])
-async def calculate_note_stats(content: str):
-    """Calculate statistics for note content (if plugin enabled)"""
-    try:
-        plugin = plugin_manager.plugins.get('note_stats')
-        if not plugin or not plugin.enabled:
-            return {"enabled": False, "stats": None}
-        
-        stats = plugin.calculate_stats(content)
-        return {"enabled": True, "stats": stats}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=safe_error_message(e, "Failed to calculate note statistics"))
 
 
 @api_router.post("/plugins/{plugin_name}/toggle", tags=["Plugins"])
@@ -1808,21 +1982,41 @@ async def get_stats(request: Request):
 # Share Token Endpoints (authenticated)
 # ============================================================================
 
+def _share_base_url(request: Request) -> str:
+    """Origin used when building share links for the API response.
+
+    Prefer SHARE_PUBLIC_ORIGIN when configured so API consumers (and the UI
+    before _localizeShareUrl runs) see the public host. Otherwise use the
+    request's base URL as before.
+    """
+    if SHARE_PUBLIC_ORIGIN:
+        return SHARE_PUBLIC_ORIGIN
+    return str(request.base_url).rstrip('/')
+
+
 @api_router.post("/share/{note_path:path}", tags=["Sharing"])
 @limiter.limit("30/minute")
 async def create_share(request: Request, note_path: str, data: dict = None):
     """
     Create a share token for a note.
     Returns the share URL that can be accessed without authentication.
-    Optionally accepts { "theme": "theme-name" } to set the display theme.
+    Optionally accepts { "theme": "theme-name" } to set the display theme, and
+    { "slug": "custom-name" } to choose the token instead of generating one. On a
+    note that is already shared, a different slug renames the link and the previous
+    URL stops working.
     """
     try:
         notes_dir = config['storage']['notes_dir']
         
         # Get theme from request body (default to light)
         theme = "light"
+        slug = None
         if data and isinstance(data, dict):
             theme = data.get('theme', 'light')
+            # Absent and blank both mean "generate one", so the UI can send the field
+            # unconditionally.
+            if data.get('slug') not in (None, ''):
+                slug = data.get('slug')
         
         # Add .md extension if not present
         if not note_path.endswith('.md'):
@@ -1834,13 +2028,19 @@ async def create_share(request: Request, note_path: str, data: dict = None):
             raise HTTPException(status_code=404, detail="Note not found")
         
         # Create or get existing token (with theme)
-        token = create_share_token(notes_dir, note_path, theme)
+        try:
+            token = create_share_token(notes_dir, note_path, theme, slug)
+        except ShareSlugError as e:
+            # 409 for a name someone else holds, 400 for a name that could never work.
+            raise HTTPException(
+                status_code=409 if e.reason == 'taken' else 400,
+                detail={"reason": e.reason, "message": f"Share slug rejected: {e.reason}"},
+            )
         if not token:
             raise HTTPException(status_code=500, detail="Failed to create share token")
         
         # Build share URL
-        base_url = str(request.base_url).rstrip('/')
-        share_url = f"{base_url}/share/{token}"
+        share_url = f"{_share_base_url(request)}/share/{token}"
         
         return {
             "success": True,
@@ -1873,12 +2073,38 @@ async def get_share_status(request: Request, note_path: str):
         info = get_share_info(notes_dir, note_path)
         
         if info.get('shared'):
-            base_url = str(request.base_url).rstrip('/')
-            info['url'] = f"{base_url}/share/{info['token']}"
+            info['url'] = f"{_share_base_url(request)}/share/{info['token']}"
         
         return info
     except Exception as e:
         raise HTTPException(status_code=500, detail=safe_error_message(e, "Failed to get share status"))
+
+
+@api_router.get("/share-slug", tags=["Sharing"])
+@limiter.limit("120/minute")
+async def check_share_slug(request: Request, slug: str, note_path: str = ""):
+    """
+    Report whether a custom share slug is usable, so the share dialog can say so
+    before the user commits to it. Advisory: the POST validates again, since another
+    request can claim the same name in between.
+
+    The limit is generous because the UI calls this while the user types.
+    """
+    try:
+        candidate = validate_slug(slug)
+    except ShareSlugError as e:
+        return {"available": False, "reason": e.reason}
+
+    # A note's own current token is not a conflict, so editing a link and saving it
+    # unchanged is not reported as taken.
+    owner_path = note_path or None
+    if owner_path and not owner_path.endswith('.md'):
+        owner_path = f"{owner_path}.md"
+
+    notes_dir = config['storage']['notes_dir']
+    if not is_slug_available(notes_dir, candidate, owner_path):
+        return {"available": False, "reason": "taken"}
+    return {"available": True, "reason": None}
 
 
 @api_router.get("/shared-notes", tags=["Sharing"])
@@ -2031,6 +2257,9 @@ async def catch_all(full_path: str, request: Request):
 
 # Register routers with the main app
 # Authentication is applied via router dependencies
+# Plugin routes go on api_router so they inherit the same auth dependency;
+# mounted last so a plugin cannot shadow a core endpoint.
+api_router.include_router(plugin_manager.build_router())
 app.include_router(api_router)
 app.include_router(pages_router)
 
@@ -2042,6 +2271,25 @@ app.include_router(pages_router)
 # (bulk_set is serialized and short-circuits on the fingerprint).
 # Success is logged from inside bulk_set so we get a single line for both
 # the initial build and any subsequent rebuilds triggered by external changes.
+@app.on_event("startup")
+def _sweep_stale_archives() -> None:
+    """Delete archives left behind by downloads that never finished.
+
+    The temp file is removed by a background task once the response has been sent,
+    but Starlette runs that after the body loop rather than in a finally, so a
+    client that cancels mid-download leaves the archive on disk. Anything older
+    than an hour cannot belong to a live request.
+    """
+    cutoff = time.time() - 3600
+    for stale in Path(tempfile.gettempdir()).glob(f'{ARCHIVE_TEMP_PREFIX}*.zip'):
+        try:
+            if stale.stat().st_mtime < cutoff:
+                stale.unlink()
+                logger.info("Removed stale archive %s", stale.name)
+        except OSError:
+            pass  # Being tidy is not worth failing startup over.
+
+
 @app.on_event("startup")
 def _warmup_note_index() -> None:
     import threading

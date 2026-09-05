@@ -10,6 +10,7 @@ replaced with placeholder HTML since they would make exports too large.
 import base64
 import logging
 import re
+from html import escape
 from pathlib import Path
 from typing import Optional, Tuple
 import mimetypes
@@ -372,7 +373,15 @@ def convert_wikilinks_to_html(markdown_content: str) -> str:
     def replace_wikilink(match):
         target = match.group(1).strip()
         display = match.group(2).strip() if match.group(2) else target
-        return f'<a href="#" class="wikilink" title="{target}" style="color: var(--accent-primary, #0366d6); text-decoration: none; border-bottom: 1px dashed currentColor;">{display}</a>'
+        # User-controlled note text lands in HTML attributes/body on /share and
+        # export pages — escape so a crafted wikilink cannot break out of the tag.
+        safe_target = escape(target, quote=True)
+        safe_display = escape(display)
+        return (
+            f'<a href="#" class="wikilink" title="{safe_target}" '
+            f'style="color: var(--accent-primary, #0366d6); text-decoration: none; '
+            f'border-bottom: 1px dashed currentColor;">{safe_display}</a>'
+        )
 
     code_blocks: list = []
 
@@ -419,6 +428,8 @@ def generate_export_html(
         .replace('$', '\\$')
         .replace('</', '<\\/')  # Prevent </script> breaking
     )
+    # Filename stems are user-controlled; keep </title> / attribute breakouts out of <head>.
+    safe_title = escape(title, quote=True)
     
     highlight_theme = 'github-dark' if is_dark else 'github'
     mermaid_theme = 'dark' if is_dark else 'default'
@@ -464,7 +475,7 @@ def generate_export_html(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
+    <title>{safe_title}</title>
     
     <!-- Highlight.js for code syntax highlighting -->
     <link rel="stylesheet" href="{hljs_css}">
@@ -673,6 +684,11 @@ def generate_export_html(
             padding-left: 2em;
             margin: 1em 0;
         }}
+        /* Nested unordered lists: disc → circle → square (matches in-app preview) */
+        .markdown-preview ul {{ list-style-type: disc; }}
+        .markdown-preview ul ul {{ list-style-type: circle; }}
+        .markdown-preview ul ul ul {{ list-style-type: square; }}
+        .markdown-preview ol {{ list-style-type: decimal; }}
         
         .markdown-preview li {{
             margin: 0.25em 0;
