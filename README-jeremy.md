@@ -1,4 +1,4 @@
-# Fork notes — jeremy-oz/NoteDiscovery
+# Fork notes — mrchenoz/NoteDiscovery
 
 Fork-specific notes for this branch. Not upstream documentation; upstream's docs
 live in `documentation/`. This file exists so known issues and fork-maintenance
@@ -13,7 +13,7 @@ for how it works.
 | | |
 |---|---|
 | Branch | `feature/excalidraw-editor` |
-| `origin` | `git@github.com:jeremy-oz/NoteDiscovery.git` (SSH — HTTPS has no stored credentials) |
+| `origin` | `https://github.com/mrchenoz/NoteDiscovery.git` (detached copy since 2026-09-05; jeremy-oz/NoteDiscovery is retired) |
 | `upstream` | `https://github.com/gamosoft/notediscovery.git` (fetch only) |
 
 ## Local setup
@@ -105,4 +105,6 @@ Expect conflicts only around `closeMediaViewer()` / `viewMedia()` in `app.js` an
 the script tags in `index.html`. Both are mechanical: keep upstream's version and
 re-add the `ExcalidrawEditor.teardown()` call / the `excalidraw-editor.js` tag.
 
-Last merged: **upstream v0.30.1**.
+Last merged: **upstream v0.31.5** (2026-09-05, one keep-both conflict in `.gitignore`).
+
+After each merge: rebuild the bundle, start `run.py` against a scratch `NOTES_DIR`, and check `POST /api/upload-media` (new scene), `GET`/`PUT /api/media/<scene>` and that `/vendor/excalidraw/excalidraw.js` is served.
