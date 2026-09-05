@@ -68,7 +68,7 @@ const LOCAL_SETTINGS = {
     sortMode: { key: 'sortMode', type: 'string', default: 'a-z' },
     newButtonAction: {
         key: 'newButtonAction', type: 'string', default: 'chooser',
-        valid: ['chooser', 'note', 'folder', 'template', 'drawing']
+        valid: ['chooser', 'note', 'folder', 'template', 'drawing', 'excalidraw']
     },
     lastUsedTemplate: { key: 'lastUsedTemplate', type: 'string', default: '' },
     // Number settings with validation
@@ -845,7 +845,7 @@ function noteApp() {
                 window.addEventListener('keydown', (e) => {
                     // Use e.key (not e.code) for letter keys to support non-QWERTY keyboard layouts
                     
-                    // Ctrl/Cmd + S to save (drawing saves PNG; notes save markdown)
+                    // Ctrl/Cmd + S to save (drawing saves PNG, notes save markdown)
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                         if (this.currentMedia && this.currentMediaType === 'drawing') {
                             e.preventDefault();
@@ -885,7 +885,7 @@ function noteApp() {
                             this.undo();
                         }
                     }
-                    
+
                     // Ctrl/Cmd + Y OR Ctrl/Cmd+Shift+Z for redo
                     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
                         if (this.currentMedia && this.currentMediaType === 'drawing') {
@@ -2678,7 +2678,9 @@ function noteApp() {
                 ? this.t('toolbar.delete_note')
                 : note.type === 'drawing'
                     ? this.t('toolbar.delete_drawing')
-                    : this.t('toolbar.delete_image');
+                    : note.type === 'excalidraw'
+                        ? this.t('toolbar.delete_excalidraw')
+                        : this.t('toolbar.delete_image');
             
             return `
                 <div 
@@ -3194,6 +3196,9 @@ function noteApp() {
             if (base.startsWith('drawing-') && base.endsWith('.png')) {
                 return 'drawing';
             }
+            if (base.endsWith('.excalidraw')) {
+                return 'excalidraw';
+            }
             const ext = filename.split('.').pop().toLowerCase();
             const mediaTypes = {
                 image: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
@@ -3212,6 +3217,7 @@ function noteApp() {
             const icons = {
                 image: '🖼️',
                 drawing: '✏️',
+                excalidraw: '🎨',
                 audio: '🎵',
                 video: '🎬',
                 document: '📄',
@@ -3238,16 +3244,20 @@ function noteApp() {
             if (this.currentMediaType === 'drawing') {
                 this._drawingDisconnectResizeObserver();
             }
+            // Flush + unmount any open Excalidraw scene (no-op when none is mounted)
+            ExcalidrawEditor.teardown({ flush: true });
             this.currentMedia = '';
             this.currentMediaType = 'image';
         },
-        
+
         // View a media file (image, audio, video, PDF) in the main pane
         viewMedia(mediaPath, mediaType = null, updateHistory = true) {
             if (this.currentMediaType === 'drawing') {
                 this._drawingDisconnectResizeObserver();
                 this._drawingCancelAutosave();
             }
+            // Flush + unmount any open Excalidraw scene (no-op when none is mounted)
+            ExcalidrawEditor.teardown({ flush: true });
             // Close mobile sidebar when a media file is selected, same as loadNote
             this.mobileSidebarOpen = false;
             this.showGraph = false; // Ensure graph is closed
@@ -3284,6 +3294,15 @@ function noteApp() {
                     this.initDrawingViewer();
                 });
             }
+
+            // Excalidraw: same first-mount vs scene→scene split as drawings above —
+            // initExcalidrawViewer() is idempotent per path, so the x-init call and
+            // this one cannot double-mount.
+            if (this.currentMediaType === 'excalidraw') {
+                this.$nextTick(() => {
+                    this.initExcalidrawViewer();
+                });
+            }
         },
         
         // Backward compatibility alias
@@ -3301,6 +3320,8 @@ function noteApp() {
             
             this._optimisticRemoveNote(mediaPath);
             this._rebuildTreeAfterMutation();
+            // Discard (don't flush) a mounted Excalidraw scene for the file being deleted
+            if (ExcalidrawEditor.mountedFor() === mediaPath) ExcalidrawEditor.teardown({ flush: false });
             if (this.currentMedia === mediaPath) this.currentMedia = '';
             
             try {
@@ -3356,6 +3377,15 @@ function noteApp() {
             }
         },
         
+        // =====================================================
+        // EXCALIDRAW EDITOR (vector sketches, *.excalidraw JSON)
+        // The editor itself lives in excalidraw-editor.js; these are the only
+        // seams into it, so app.js carries none of its internals.
+        // =====================================================
+
+        createNewExcalidraw() { return ExcalidrawEditor.createNew(this); },
+        initExcalidrawViewer() { return ExcalidrawEditor.mount(this); },
+
         _drawingEncodeMediaPath() {
             return this.currentMedia.split('/').map((s) => encodeURIComponent(s)).join('/');
         },
@@ -5011,6 +5041,7 @@ function noteApp() {
                 case 'folder':   this.createFolder();       break;
                 case 'template': this.openTemplateModal();  break;
                 case 'drawing':  this.createNewDrawing();   break;
+                case 'excalidraw': this.createNewExcalidraw(); break;
                 default:         this._openNewDropdownChooser(event);
             }
         },
@@ -8788,7 +8819,7 @@ function noteApp() {
         goToHomepageFolder(folderPath) {
             this.showGraph = false; // Close graph when navigating
             this.selectedHomepageFolder = folderPath || '';
-            
+
             // Clear editor state to show landing page
             this.currentNote = '';
             this.currentNoteName = '';

@@ -25,5 +25,6 @@ To update an existing drawing from automation, use **PUT `/api/media/{path}`** w
 
 ## See also
 
+- [EXCALIDRAW.md](EXCALIDRAW.md) — The vector (Excalidraw) editor for diagrams that stay editable  
 - [FEATURES.md](FEATURES.md) — Full feature list and keyboard shortcuts  
 - [API.md](API.md) — Media endpoints  

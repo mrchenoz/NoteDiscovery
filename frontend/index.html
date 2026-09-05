@@ -100,6 +100,8 @@
     <script src="/static/vendor/highlight.js/languages/css.min.js"></script>
     <script src="/static/vendor/highlight.js/languages/http.min.js"></script>
     
+    <!-- Excalidraw is not loaded here either: excalidraw-editor.js imports the
+         vendored bundle when a *.excalidraw file is first opened -->
     <!-- Mermaid is not loaded here: renderMermaid() imports it on first diagram -->
     <script src="/static/vendor/vis-network/vis-network.min.js"></script>
     <script src="/static/vendor/qrcode-generator/qrcode.min.js"></script>
@@ -2344,6 +2346,7 @@
                                         <option value="folder"   x-text="t('settings.new_button_option_folder')"></option>
                                         <option value="template" x-text="t('settings.new_button_option_template')"></option>
                                         <option value="drawing"  x-text="t('settings.new_button_option_drawing')"></option>
+                                        <option value="excalidraw" x-text="t('settings.new_button_option_excalidraw')"></option>
                                     </select>
                                     <p class="text-xs mt-1" style="color: var(--text-tertiary);" x-text="t('settings.new_button_action_desc')"></p>
                                 </div>
@@ -2689,7 +2692,7 @@
                                                 style="position: absolute; top: 8px; right: 8px; opacity: 0; transition: opacity 0.2s; color: var(--error); padding: 4px; border-radius: 4px; background-color: var(--bg-secondary);"
                                                 onmouseover="this.style.backgroundColor='var(--bg-hover)'"
                                                 onmouseout="this.style.backgroundColor='var(--bg-secondary)'"
-                                                :title="note.type === 'note' ? t('toolbar.delete_note') : (note.type === 'drawing' ? t('toolbar.delete_drawing') : t('toolbar.delete_image'))"
+                                                :title="note.type === 'note' ? t('toolbar.delete_note') : (note.type === 'drawing' ? t('toolbar.delete_drawing') : (note.type === 'excalidraw' ? t('toolbar.delete_excalidraw') : t('toolbar.delete_image')))"
                                             >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -2785,7 +2788,7 @@
                                 style="color: var(--error);"
                                 onmouseover="this.style.backgroundColor='var(--bg-hover)'"
                                 onmouseout="this.style.backgroundColor='transparent'"
-                                :title="currentMedia ? (currentMediaType === 'drawing' ? t('toolbar.delete_drawing') : t('toolbar.delete_image')) : t('toolbar.delete_note')"
+                                :title="currentMedia ? (currentMediaType === 'drawing' ? t('toolbar.delete_drawing') : (currentMediaType === 'excalidraw' ? t('toolbar.delete_excalidraw') : t('toolbar.delete_image'))) : t('toolbar.delete_note')"
                             >
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -3306,7 +3309,7 @@
                         <template x-if="currentMedia">
                             <div 
                                 class="flex-1 flex overflow-auto min-h-0"
-                                :class="currentMediaType === 'drawing' ? 'items-stretch justify-stretch' : 'items-center justify-center'"
+                                :class="(currentMediaType === 'drawing' || currentMediaType === 'excalidraw') ? 'items-stretch justify-stretch' : 'items-center justify-center'"
                                 style="background-color: var(--bg-primary);"
                             >
                                 <!-- Image -->
@@ -3422,10 +3425,22 @@
                                         </div>
                                     </div>
                                 </template>
+
+                                <!-- Excalidraw scene (*.excalidraw JSON) — toolbar/undo/theme UI comes
+                                     from the Excalidraw component itself, mounted by initExcalidrawViewer() -->
+                                <template x-if="currentMediaType === 'excalidraw'">
+                                    <div class="flex flex-col flex-1 w-full min-w-0 min-h-0 self-stretch">
+                                        <div
+                                            x-ref="excalidrawHost"
+                                            x-init="initExcalidrawViewer()"
+                                            class="flex-1 w-full min-h-0 min-w-0 relative"
+                                        ></div>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>
-                    
+
                     <!-- Stats Status Bar (only shows if plugin enabled) -->
                     <div x-show="statsPluginEnabled && currentNote && noteStats" 
                          class="border-t zen-hide"
@@ -3625,6 +3640,16 @@
             >
                 <span class="text-lg">✏️</span>
                 <span x-text="t('sidebar.new_drawing')"></span>
+            </button>
+            <button
+                @click="createNewExcalidraw()"
+                class="w-full px-4 py-2.5 text-sm text-left flex items-center gap-3 transition-colors"
+                style="color: var(--text-primary);"
+                onmouseover="this.style.backgroundColor='var(--bg-hover)'"
+                onmouseout="this.style.backgroundColor='transparent'"
+            >
+                <span class="text-lg">🎨</span>
+                <span x-text="t('sidebar.new_excalidraw')"></span>
             </button>
         </div>
     </div>
@@ -4180,6 +4205,7 @@
     
     <!-- ?v= is the app version, so a release cannot be served from a stale cache -->
     <script src="/static/editor-markdown-continue.js?v=__APP_VERSION__"></script>
+    <script src="/static/excalidraw-editor.js?v=__APP_VERSION__"></script>
     <script src="/static/app.js?v=__APP_VERSION__"></script>
     
     <!-- PWA Service Worker Registration -->

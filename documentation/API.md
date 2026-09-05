@@ -221,10 +221,10 @@ PUT /api/media/{media_path}
 Content-Type: image/png
 ```
 
-Overwrites an **existing** file in the vault. The server only accepts targets whose filename matches **`drawing-*.png`** (lowercase `.png`). The body must be a valid **PNG** (magic bytes are checked). Used by the in-app drawing editor when saving.
+Overwrites an **existing** file in the vault. The server only accepts targets whose filename matches **`drawing-*.png`** (lowercase `.png`) or **`*.excalidraw`**. For PNG targets the body must be a valid **PNG** (magic bytes are checked); for `.excalidraw` targets the body must parse as a **JSON object** (Excalidraw scene). Used by the in-app drawing and Excalidraw editors when saving.
 
 **Requirements:**
-- File must already exist (create new drawings via **New drawing** / `POST /api/upload-media` with `next_to_notes`, not via PUT).
+- File must already exist (create new drawings via **New drawing** / **New Excalidraw** / `POST /api/upload-media` with `next_to_notes`, not via PUT).
 - Path must stay within the notes directory (same rules as GET).
 
 **Response:**

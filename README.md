@@ -76,6 +76,7 @@ NoteDiscovery is a **lightweight, self-hosted note-taking application** that put
 - 📄 **HTML Export & Print** - Export notes as standalone HTML or print
 - 🕸️ **Graph View** - Interactive visualization of connected notes
 - ✏️ **Drawing editor** - In-app sketches as `drawing-*.png` next to your notes — see [documentation/DRAWING.md](documentation/DRAWING.md)
+- 🎨 **Excalidraw editor** - Vector whiteboard scenes as `.excalidraw` files, fully editable forever — see [documentation/EXCALIDRAW.md](documentation/EXCALIDRAW.md)
 - ⭐ **Favorites** - Star your most-used notes for instant access
 - 📑 **Outline Panel** - Navigate headings with click-to-jump TOC
 - 🤖 **AI Assistant Ready** - MCP integration for Claude, Cursor & more

@@ -56,8 +56,12 @@ Thumbs.db
 # Video demo files
 video/
 
-# Browser libraries, downloaded by scripts/vendor_assets.py
+# Browser libraries: downloaded by scripts/vendor_assets.py, plus the Excalidraw
+# bundle built by scripts/build_excalidraw
 frontend/vendor/
+
+# Build dependencies for the Excalidraw bundle
+scripts/build_excalidraw/node_modules/
 
 # Local test suite, not shipped
 tests/

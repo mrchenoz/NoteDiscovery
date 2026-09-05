@@ -11,6 +11,7 @@ COPY frontend/ ./frontend/
 
 # Minify JavaScript (esbuild is ~100x faster than terser)
 RUN esbuild frontend/app.js --minify --outfile=frontend/app.js --allow-overwrite && \
+    esbuild frontend/excalidraw-editor.js --minify --outfile=frontend/excalidraw-editor.js --allow-overwrite && \
     esbuild frontend/sw.js --minify --outfile=frontend/sw.js --allow-overwrite
 
 # Minify HTML files (handles inline CSS and JS too)
@@ -37,6 +38,18 @@ WORKDIR /build
 
 COPY scripts/vendor_assets.py scripts/vendor_lock.json ./scripts/
 RUN python scripts/vendor_assets.py --dest /vendor
+
+# Stage 2b: Bundle the Excalidraw editor. It cannot go through vendor_assets.py:
+# its published build externalises every dependency and React ships as CommonJS,
+# so a bundler has to resolve them. See scripts/build_excalidraw/build.mjs.
+FROM node:20-alpine AS excalidraw
+
+WORKDIR /build
+
+COPY scripts/build_excalidraw/package.json scripts/build_excalidraw/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY scripts/build_excalidraw/entry.js scripts/build_excalidraw/build.mjs ./
+RUN node build.mjs --dest /excalidraw
 
 # Stage 3: Install Python dependencies
 FROM python:3.11-slim AS builder
@@ -66,6 +79,9 @@ COPY --from=minifier /build/frontend ./frontend
 
 # Browser libraries, with their licence texts and notices
 COPY --from=vendor /vendor ./frontend/vendor
+
+# Excalidraw editor bundle (built, not downloaded — see stage 2b)
+COPY --from=excalidraw /excalidraw ./frontend/vendor/excalidraw
 
 # Copy application files
 COPY backend ./backend

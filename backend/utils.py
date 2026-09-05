@@ -774,8 +774,10 @@ def save_uploaded_image(
     Default (sibling_folder is None): store in ``_attachments`` next to the note implied by
     ``note_path`` (drag/drop, paste, etc.).
 
-    If ``sibling_folder`` is set (including ``""`` for vault root): store ``drawing-{timestamp}.png``
-    in that folder next to ``.md`` files — used for new drawings from the + menu.
+    If ``sibling_folder`` is set (including ``""`` for vault root): store
+    ``drawing-{timestamp}.png`` (or ``drawing-{timestamp}.excalidraw`` when the upload
+    is an Excalidraw scene) in that folder next to ``.md`` files — used for new
+    drawings from the + menu.
 
     Returns a relative path from ``notes_dir``, or None on failure.
     """
@@ -794,7 +796,8 @@ def save_uploaded_image(
         except OSError:
             return None
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        full_path = dest_dir / f"drawing-{timestamp}.png"
+        ext = ".excalidraw" if (filename or "").lower().endswith(".excalidraw") else ".png"
+        full_path = dest_dir / f"drawing-{timestamp}{ext}"
         if not validate_path_security(notes_dir, full_path):
             return None
         try:
@@ -833,6 +836,7 @@ MEDIA_EXTENSIONS = {
     'audio': {'.mp3', '.wav', '.ogg', '.m4a'},
     'video': {'.mp4', '.webm', '.mov', '.avi'},
     'document': {'.pdf'},
+    'excalidraw': {'.excalidraw'},
 }
 
 # All supported media extensions (flat set for quick lookup)
@@ -842,9 +846,11 @@ ALL_MEDIA_EXTENSIONS = set().union(*MEDIA_EXTENSIONS.values())
 def get_media_type(filename: str) -> Optional[str]:
     """
     Determine the media type based on file extension.
-    Returns: 'image', 'audio', 'video', 'document', 'drawing', or None if not a media file.
+    Returns: 'image', 'audio', 'video', 'document', 'drawing', 'excalidraw',
+    or None if not a media file.
 
     Drawings are PNG files stored like images but named drawing-*.png (editable canvas in the app).
+    Excalidraw scenes are *.excalidraw JSON files (editable vector sketches in the app).
     """
     name_lower = Path(filename).name.lower()
     if name_lower.startswith('drawing-') and name_lower.endswith('.png'):
