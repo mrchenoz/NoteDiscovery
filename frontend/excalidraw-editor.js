@@ -39,6 +39,7 @@
         mountedFor: null,   // vault-relative path of the scene the editor is showing
         host: null,         // viewer-pane element the React root is mounted into
         app: null,          // Alpine component that mounted the scene (autosave delay)
+        props: null,        // props of the rendered <Excalidraw>, re-rendered on theme change
         autosaveTimeout: null,
         saveInFlight: false,
         saveQueued: false,
@@ -179,6 +180,7 @@
         EXCAL.mountedFor = null;
         EXCAL.host = null;
         EXCAL.app = null;
+        EXCAL.props = null;
         EXCAL.lastSavedJSON = null;
         EXCAL.saveQueued = false;
         if (root) {
@@ -248,7 +250,9 @@
         // is byte-identical to the string compared in save(); a scene that is not
         // yet canonical costs exactly one normalising write and then settles.
         EXCAL.lastSavedJSON = onDiskJSON;
-        EXCAL.root.render(EXCAL.lib.createElement(EXCAL.lib.Excalidraw, {
+        // Kept on EXCAL so setTheme() can re-render the same element with one prop
+        // changed; React reconciles in place, so the scene and its history survive.
+        EXCAL.props = {
             initialData: {
                 elements: (scene && Array.isArray(scene.elements)) ? scene.elements : [],
                 appState,
@@ -257,7 +261,22 @@
             excalidrawAPI: (api) => { EXCAL.api = api; },
             onChange: () => scheduleAutosave(),
             theme: app.getThemeType() === 'dark' ? 'dark' : 'light',
-        }));
+        };
+        EXCAL.root.render(EXCAL.lib.createElement(EXCAL.lib.Excalidraw, EXCAL.props));
+    }
+
+    /**
+     * Follow an app theme change while a scene is open. `theme` is a controlled
+     * prop on <Excalidraw>, so the way to change it is to render the mounted
+     * element again with the new value; initialData is only read on first mount,
+     * so nothing else is affected. Safe no-op when nothing is mounted.
+     */
+    function setTheme(themeType) {
+        if (!EXCAL.root || !EXCAL.props || !EXCAL.lib) return;
+        const theme = themeType === 'dark' ? 'dark' : 'light';
+        if (EXCAL.props.theme === theme) return;
+        EXCAL.props = { ...EXCAL.props, theme };
+        EXCAL.root.render(EXCAL.lib.createElement(EXCAL.lib.Excalidraw, EXCAL.props));
     }
 
     /**
@@ -332,5 +351,6 @@
         save,
         teardown,
         mountedFor,
+        setTheme,
     };
 })(typeof window !== 'undefined' ? window : globalThis);
