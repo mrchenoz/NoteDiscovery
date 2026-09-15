@@ -102,7 +102,24 @@ Add the HTTP extra as an optional dependency (`notediscovery[mcp-http]`: `mcp`, 
 - Excluded tool called by name → refusal, no upstream request made.
 - Two concurrent `create_note` calls both land.
 
-### 5. Phase 2 (separate PR, do not block phase 1)
+### 6. Search must see notes changed outside the app (backend, small, phase 1)
+
+Verified on the live vault 2026-09-16: a note created by Obsidian Sync (i.e. written straight into
+`NOTES_DIR`) is **listed and readable** through the API and MCP, but **`search_notes` does not find
+it until the app restarts**. Cause: `NoteIndex.bulk_set()` (the rescan that runs when the vault
+fingerprint changes) only calls `_prune_search_unlocked()`, which drops deleted paths from the
+inverted index; nothing re-extracts terms for paths that are new or whose mtime changed. Only
+`update_note()` (app-side writes) updates search terms incrementally.
+
+Fix in `backend/note_index.py`: in `bulk_set()`, when `_search_built` is true, compute the set of
+paths that are new or whose recorded mtime differs from the previous record, read those files
+(outside the lock, like `ensure_search_index_built`) and replace their terms via
+`_update_search_for_note_unlocked`. Prune as today. Add a stat counter (`search_incremental_paths`).
+Test: start the app on a temp vault, write a `.md` file directly into `NOTES_DIR`, call
+`/api/search?q=<word from it>` → found, no restart. Also cover: external edit of an existing note
+(old terms gone, new terms present) and external delete.
+
+### 7. Phase 2 (separate PR, do not block phase 1)
 
 The vault is edited by Jeremy in Obsidian at the same time agents write through the API, and
 `utils.save_note` is an unconditional whole-file write. Add an optional `expected_mtime` (or
